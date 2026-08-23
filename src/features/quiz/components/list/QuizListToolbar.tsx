@@ -15,6 +15,8 @@ interface QuizListToolbarProps {
   onTopicChange: (topic: string) => void;
   canEditSuffix?: boolean;
   globalDefaultSuffix?: string;
+  delaySeconds?: number;
+  setDelaySeconds?: (sec: number) => void;
 }
 
 export default function QuizListToolbar({
@@ -25,7 +27,9 @@ export default function QuizListToolbar({
   selectedTopic,
   onTopicChange,
   canEditSuffix: canEditSuffixProp,
-  globalDefaultSuffix
+  globalDefaultSuffix,
+  delaySeconds = 3,
+  setDelaySeconds
 }: QuizListToolbarProps) {
   const { user, isAdmin } = useAuth();
   
@@ -125,6 +129,42 @@ export default function QuizListToolbar({
       </div>
 
       <div className="flex flex-col gap-3">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-white border border-slate-200 rounded-xl p-3 shadow-sm">
+          <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+            ⏱️ পরবর্তী পোলের বিরতি (সেকেন্ড):
+          </span>
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {[1, 3, 5, 10, 30, 60, 90].map((sec) => (
+              <button
+                key={sec}
+                type="button"
+                onClick={() => setDelaySeconds && setDelaySeconds(sec)}
+                className={`px-2.5 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  delaySeconds === sec
+                    ? 'bg-blue-600 text-white shadow-sm'
+                    : 'bg-slate-100 text-slate-700 border border-slate-200 hover:bg-slate-200'
+                }`}
+              >
+                {sec}s
+              </button>
+            ))}
+            {setDelaySeconds && (
+              <input
+                type="number"
+                min="1"
+                max="90"
+                value={delaySeconds}
+                onChange={(e) => {
+                  const val = parseInt(e.target.value, 10);
+                  if (!isNaN(val) && val >= 1 && val <= 90) setDelaySeconds(val);
+                }}
+                className="w-16 p-1 bg-white border border-slate-200 rounded-xl text-xs font-bold text-center text-slate-700 outline-none focus:ring-2 focus:ring-blue-500"
+                title="কাস্টম সেকেন্ড (সর্বোচ্চ ৯০ সেকেন্ড)"
+              />
+            )}
+          </div>
+        </div>
+
         <div className="w-full">
           <DisplayConfig displayPrefix={displayPrefix || ''} displaySuffix={displaySuffix || ''} />
         </div>

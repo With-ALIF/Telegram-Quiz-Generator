@@ -31,4 +31,6 @@ export interface QuizListProps {
   canEditSuffix?: boolean;
   globalDefaultSuffix?: string;
   hideDelete?: boolean;
+  delaySeconds?: number;
+  setDelaySeconds?: (sec: number) => void;
 }

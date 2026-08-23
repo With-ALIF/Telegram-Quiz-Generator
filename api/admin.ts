@@ -1,6 +1,15 @@
 import { createClient } from '@supabase/supabase-js';
 import { SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY, getSupabaseAdmin } from './supabaseClient.js';
 
+function generateRandomPassword(length = 8): string {
+  const chars = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let result = '';
+  for (let i = 0; i < length; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return result;
+}
+
 async function verifyAdmin(req: any): Promise<boolean> {
   try {
     const authHeader = req.headers['authorization'] || req.headers['Authorization'] || req.headers.authorization;
@@ -98,6 +107,12 @@ export default async function handler(req: any, res: any) {
           
         if (profileError) throw profileError;
 
+        const { data: photos } = await supabaseAdmin
+          .from('user_photos')
+          .select('user_id, photo_url');
+
+        const photoMap = new Map((photos || []).map(p => [p.user_id, p.photo_url]));
+
         const mergedUsers = (profiles || []).map((profile: any) => {
           const stats = {
             generated: profile.total_generated || 0,
@@ -118,6 +133,7 @@ export default async function handler(req: any, res: any) {
               if (p.note) perms.push('note');
               if (p.suffix_edit) perms.push('suffix-edit');
               if (p.qbs) perms.push('qbs');
+              if (p.rapid_fire || p['rapid-fire']) perms.push('rapid-fire');
             }
           }
           
@@ -125,7 +141,7 @@ export default async function handler(req: any, res: any) {
             id: profile.id,
             email: profile.email || '',
             displayName: profile.display_name || (profile.email ? profile.email.split('@')[0] : 'Anonymous'),
-            photoURL: profile.photo_url || '',
+            photoURL: photoMap.get(profile.id) || '',
             role: profile.role || 'user',
             permissions: perms,
             stats: stats,
@@ -143,7 +159,14 @@ export default async function handler(req: any, res: any) {
           return res.status(400).json({ error: "Email is required." });
         }
 
-        const finalPassword = password || Math.random().toString(36).slice(-8);
+        if (!SUPABASE_SERVICE_ROLE_KEY || SUPABASE_SERVICE_ROLE_KEY === SUPABASE_ANON_KEY) {
+          console.error("❌ SUPABASE_SERVICE_ROLE_KEY is missing or set to Anon key.");
+          return res.status(400).json({ 
+            error: "SUPABASE_SERVICE_ROLE_KEY is not configured or is set to the Anon key. Admin operations require the Service Role Key to be configured in your environment variables/Secrets." 
+          });
+        }
+
+        const finalPassword = (password && password.trim().length >= 6) ? password.trim() : generateRandomPassword(8);
 
         const { data: userData, error: createError } = await supabaseAdmin.auth.admin.createUser({
           email,
@@ -153,7 +176,12 @@ export default async function handler(req: any, res: any) {
         });
 
         if (createError) {
-          return res.status(400).json({ error: createError.message });
+          console.error("❌ Supabase Admin createUser failed:", createError);
+          let errMsg = createError.message || JSON.stringify(createError);
+          if (errMsg.includes("Database error creating new user")) {
+            errMsg = "Database error creating new user. This is caused by a failing database trigger (public.handle_new_user) in your Supabase project. To fix this, please run the SQL query from your 'supabase_schema.sql' file (specifically the updated exception-tolerant 'handle_new_user' trigger function) in your Supabase SQL Editor.";
+          }
+          return res.status(400).json({ error: errMsg });
         }
 
         const createdUser = userData.user;
@@ -163,16 +191,18 @@ export default async function handler(req: any, res: any) {
 
         const { error: profileError } = await supabaseAdmin
           .from('profiles')
-          .insert({
+          .upsert({
             id: createdUser.id,
             email: createdUser.email,
             display_name: displayName || '',
-            photo_url: '',
             role: 'user'
-          });
+          }, { onConflict: 'id' });
 
         if (profileError) {
-          console.error("Warning: Profile record creation failed:", profileError.message);
+          console.error("❌ Profile record creation failed:", profileError.message);
+          // Clean up created Auth user to avoid orphaned accounts
+          await supabaseAdmin.auth.admin.deleteUser(createdUser.id);
+          return res.status(400).json({ error: `Database error creating user profile: ${profileError.message}` });
         }
 
         const permObj = {
@@ -187,14 +217,19 @@ export default async function handler(req: any, res: any) {
           note: (permissions || []).includes('note'),
           suffix_edit: (permissions || []).includes('suffix-edit'),
           qbs: (permissions || []).includes('qbs'),
+          rapid_fire: (permissions || []).includes('rapid-fire'),
         };
 
         const { error: permConfigError } = await supabaseAdmin
           .from('profile_permissions')
-          .upsert(permObj);
+          .upsert(permObj, { onConflict: 'id' });
 
         if (permConfigError) {
-          console.error("Warning: Permissions config creation failed:", permConfigError.message);
+          console.error("❌ Permissions config creation failed:", permConfigError.message);
+          // Clean up profile and Auth user
+          await supabaseAdmin.from('profiles').delete().eq('id', createdUser.id);
+          await supabaseAdmin.auth.admin.deleteUser(createdUser.id);
+          return res.status(400).json({ error: `Database error configuring user permissions: ${permConfigError.message}` });
         }
 
         return res.status(200).json({
@@ -215,10 +250,17 @@ export default async function handler(req: any, res: any) {
           return res.status(400).json({ error: "User ID is required." });
         }
 
+        if (!SUPABASE_SERVICE_ROLE_KEY || SUPABASE_SERVICE_ROLE_KEY === SUPABASE_ANON_KEY) {
+          return res.status(400).json({ 
+            error: "SUPABASE_SERVICE_ROLE_KEY is not configured or is set to the Anon key. Admin operations require the Service Role Key." 
+          });
+        }
+
         const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(userId);
 
         if (deleteError) {
-          return res.status(400).json({ error: deleteError.message });
+          console.error("❌ Supabase Admin deleteUser failed:", deleteError);
+          return res.status(400).json({ error: deleteError.message || JSON.stringify(deleteError) });
         }
 
         return res.status(200).json({ success: true, message: "User deleted successfully" });
@@ -231,12 +273,19 @@ export default async function handler(req: any, res: any) {
           return res.status(400).json({ error: "User ID and new password are required." });
         }
 
+        if (!SUPABASE_SERVICE_ROLE_KEY || SUPABASE_SERVICE_ROLE_KEY === SUPABASE_ANON_KEY) {
+          return res.status(400).json({ 
+            error: "SUPABASE_SERVICE_ROLE_KEY is not configured or is set to the Anon key. Admin operations require the Service Role Key." 
+          });
+        }
+
         const { error: resetError } = await supabaseAdmin.auth.admin.updateUserById(userId, {
           password: newPassword
         });
 
         if (resetError) {
-          return res.status(400).json({ error: resetError.message });
+          console.error("❌ Supabase Admin resetPassword failed:", resetError);
+          return res.status(400).json({ error: resetError.message || JSON.stringify(resetError) });
         }
 
         return res.status(200).json({ success: true, message: "Password reset successfully" });
@@ -261,6 +310,7 @@ export default async function handler(req: any, res: any) {
           note: (permissions || []).includes('note'),
           suffix_edit: (permissions || []).includes('suffix-edit'),
           qbs: (permissions || []).includes('qbs'),
+          rapid_fire: (permissions || []).includes('rapid-fire'),
         };
 
         const { error } = await supabaseAdmin

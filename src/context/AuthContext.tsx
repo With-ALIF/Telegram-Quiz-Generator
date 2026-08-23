@@ -18,6 +18,17 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+export function normalizeGithubUrl(url: string): string {
+  if (!url) return '';
+  let clean = url.trim();
+  if (clean.includes('github.com') && clean.includes('/blob/')) {
+    clean = clean
+      .replace('github.com', 'raw.githubusercontent.com')
+      .replace('/blob/', '/');
+  }
+  return clean;
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<any>(null);
@@ -69,8 +80,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           .single();
         
         if (profileError) throw profileError;
+
+        // Fetch photo_url from user_photos
+        const { data: photoData } = await supabase
+          .from('user_photos')
+          .select('photo_url')
+          .eq('user_id', user.id)
+          .maybeSingle();
         
         if (profileData) {
+          // Replace profile photo_url with the one from user_photos and normalize
+          profileData.photo_url = photoData ? normalizeGithubUrl(photoData.photo_url || '') : '';
+          
           const perms = [];
           if (profileData.profile_permissions) {
             const p = Array.isArray(profileData.profile_permissions) ? profileData.profile_permissions[0] : profileData.profile_permissions;
@@ -85,6 +106,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               if (p.note) perms.push('note');
               if (p.suffix_edit) perms.push('suffix-edit');
               if (p.qbs) perms.push('qbs');
+              if (p.rapid_fire || p['rapid-fire']) perms.push('rapid-fire');
             }
           }
           const userPerms = perms;
@@ -115,6 +137,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             }
           })
           .on('postgres_changes', { 
+            event: '*', 
+            schema: 'public', 
+            table: 'user_photos', 
+            filter: `user_id=eq.${user.id}` 
+          }, payload => {
+            if (payload.new) {
+              setProfile((prev: any) => ({ ...prev, photo_url: normalizeGithubUrl((payload.new as any).photo_url || '') }));
+            }
+          })
+          .on('postgres_changes', { 
             event: 'UPDATE', 
             schema: 'public', 
             table: 'profile_permissions', 
@@ -133,6 +165,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               if (p.note) perms.push('note');
               if (p.suffix_edit) perms.push('suffix-edit');
               if (p.qbs) perms.push('qbs');
+              if (p.rapid_fire || p['rapid-fire']) perms.push('rapid-fire');
               
               setProfile((prev: any) => ({ ...prev, permissions: perms }));
             }
@@ -238,6 +271,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       email: user.email,
       ...user,
       ...profile,
+      photoURL: normalizeGithubUrl(profile?.photo_url || user?.user_metadata?.avatar_url || ''),
+      displayName: profile?.display_name || user?.user_metadata?.full_name || user?.user_metadata?.display_name || '',
     };
   }, [user?.id, profile]);
 

@@ -11,6 +11,7 @@ import CSVModifier from '../../features/quiz/components/export/CSVModifier';
 import ChannelFormattingOverview from '../../features/settings/components/channel/ChannelFormattingOverview';
 import ProtectedRoute from '../../components/ProtectedRoute';
 import NotePage from '../../features/note/pages/NotePage';
+import RapidFirePage from '../../features/rapid-fire/RapidFirePage';
 import { useAppInit } from '../useAppInit';
 
 interface FeatureRoutesProps {
@@ -71,6 +72,8 @@ export const useFeatureRoutes = ({ appState, handleDraftSelected }: FeatureRoute
                     isStopping={telegram.isStopping}
                     handleStopSend={telegram.handleStopSend}
                     bulkSendStatus={telegram.bulkSendStatus}
+                    delaySeconds={telegram.delaySeconds}
+                    setDelaySeconds={telegram.setDelaySeconds}
                   />
                 </div>
               </div>
@@ -114,6 +117,8 @@ export const useFeatureRoutes = ({ appState, handleDraftSelected }: FeatureRoute
                 isStopping={telegram.isStopping}
                 handleStopSend={telegram.handleStopSend}
                 bulkSendStatus={telegram.bulkSendStatus}
+                delaySeconds={telegram.delaySeconds}
+                setDelaySeconds={telegram.setDelaySeconds}
                 title="Total Polls"
                 sentLabel="Total Poll"
                 sentValue={sentQuestions.length}
@@ -177,6 +182,14 @@ export const useFeatureRoutes = ({ appState, handleDraftSelected }: FeatureRoute
         element={
           <ProtectedRoute permission="note">
             <NotePage />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/rapid-fire" 
+        element={
+          <ProtectedRoute permission="rapid-fire">
+            <RapidFirePage />
           </ProtectedRoute>
         } 
       />

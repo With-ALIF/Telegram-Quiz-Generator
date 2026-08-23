@@ -41,6 +41,8 @@ export default function QuizList({
   canEditSuffix,
   globalDefaultSuffix,
   hideDelete,
+  delaySeconds,
+  setDelaySeconds,
   className = ""
 }: QuizListProps) {
   const { selectedTopic, setSelectedTopic, filteredQuestions } = useQuizFilter(questions);
@@ -101,6 +103,8 @@ export default function QuizList({
           onTopicChange={setSelectedTopic}
           canEditSuffix={canEditSuffix}
           globalDefaultSuffix={globalDefaultSuffix}
+          delaySeconds={delaySeconds}
+          setDelaySeconds={setDelaySeconds}
         />
       </QuizListHeader>
 

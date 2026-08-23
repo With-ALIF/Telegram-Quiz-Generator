@@ -41,6 +41,8 @@ export default function OCRPage({ appState, handleDraftSelected }: OCRPageProps)
             stats={quiz.stats}
             settings={settings.settings}
             onChannelChange={(id) => settings.saveSettings({ ...settings.settings, activeChannelId: id })}
+            delaySeconds={telegram.delaySeconds}
+            setDelaySeconds={telegram.setDelaySeconds}
           />
         </div>
       </div>

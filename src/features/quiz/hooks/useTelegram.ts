@@ -21,6 +21,19 @@ export function useTelegram({ settings, questions, setQuestions, setStats, botTo
   const [isBulkSending, setIsBulkSending] = useState(false);
   const [isStopping, setIsStopping] = useState(false);
   const [bulkSendStatus, setBulkSendStatus] = useState<string | null>(null);
+  const [delaySeconds, setDelaySeconds] = useState<number>(() => {
+    const saved = localStorage.getItem('quiz_poll_delay_seconds');
+    if (saved) {
+      const parsed = parseInt(saved, 10);
+      if (!isNaN(parsed) && parsed >= 0) return parsed;
+    }
+    return 3;
+  });
+
+  React.useEffect(() => {
+    localStorage.setItem('quiz_poll_delay_seconds', delaySeconds.toString());
+  }, [delaySeconds]);
+
   const stopRequestedRef = useRef(false);
 
   const handleStopSend = useCallback(() => {
@@ -39,16 +52,17 @@ export function useTelegram({ settings, questions, setQuestions, setStats, botTo
       navigate('/settings');
       return;
     }
-    const exists = questions.some(q => q.id === id);
-    if (exists) {
-      setQuestions(p => p.map(q => q.id === id ? { ...q, status: 'sending' } : q));
-    }
     const qToSend = customQuestion || questions.find(q => q.id === id);
     if (!qToSend) return;
 
     if (!qToSend.topic) {
       setSendError('পোল পাঠানোর আগে অবশ্যই একটি বিষয় (Topic) নির্বাচন করতে হবে।');
       return;
+    }
+
+    const exists = questions.some(q => q.id === id);
+    if (exists) {
+      setQuestions(p => p.map(q => q.id === id ? { ...q, status: 'sending' } : q));
     }
 
     try {
@@ -114,7 +128,12 @@ export function useTelegram({ settings, questions, setQuestions, setStats, botTo
             }
             setBulkSendStatus(null);
           } else {
-            await new Promise(r => setTimeout(r, 1000));
+            for (let secondsLeft = delaySeconds; secondsLeft > 0; secondsLeft--) {
+              if (stopRequestedRef.current) break;
+              setBulkSendStatus(`পোল পাঠানো হয়েছে (${sentCount}/${sendableQs.length})। পরবর্তী পোল পাঠানো হবে ${secondsLeft} সেকেন্ড পর...`);
+              await new Promise(r => setTimeout(r, 1000));
+            }
+            setBulkSendStatus(null);
           }
         }
       }
@@ -124,7 +143,7 @@ export function useTelegram({ settings, questions, setQuestions, setStats, botTo
       setBulkSendStatus(null);
       stopRequestedRef.current = false;
     }
-  }, [handleSendToTelegram]);
+  }, [handleSendToTelegram, delaySeconds]);
 
   const handleSendSelected = useCallback(async (ids: string[]) => {
     const selectedQs = questions
@@ -160,7 +179,12 @@ export function useTelegram({ settings, questions, setQuestions, setStats, botTo
             }
             setBulkSendStatus(null);
           } else {
-            await new Promise(r => setTimeout(r, 1000));
+            for (let secondsLeft = delaySeconds; secondsLeft > 0; secondsLeft--) {
+              if (stopRequestedRef.current) break;
+              setBulkSendStatus(`পোল পাঠানো হয়েছে (${sentCount}/${selectedQs.length})। পরবর্তী পোল পাঠানো হবে ${secondsLeft} সেকেন্ড পর...`);
+              await new Promise(r => setTimeout(r, 1000));
+            }
+            setBulkSendStatus(null);
           }
         }
       }
@@ -170,7 +194,7 @@ export function useTelegram({ settings, questions, setQuestions, setStats, botTo
       setBulkSendStatus(null);
       stopRequestedRef.current = false;
     }
-  }, [questions, handleSendToTelegram]);
+  }, [questions, handleSendToTelegram, delaySeconds]);
 
   return useMemo(() => ({ 
     handleSendToTelegram, 
@@ -181,6 +205,8 @@ export function useTelegram({ settings, questions, setQuestions, setStats, botTo
     isBulkSending,
     isStopping,
     handleStopSend,
-    bulkSendStatus
-  }), [handleSendToTelegram, handleSendAll, handleSendSelected, sendError, isBulkSending, isStopping, handleStopSend, bulkSendStatus]);
+    bulkSendStatus,
+    delaySeconds,
+    setDelaySeconds
+  }), [handleSendToTelegram, handleSendAll, handleSendSelected, sendError, isBulkSending, isStopping, handleStopSend, bulkSendStatus, delaySeconds]);
 }
