@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { lazy } from 'react';
 import { Route } from 'react-router-dom';
-import AdminDashboard from '../../features/admin/pages/AdminDashboard';
-import AdminStats from '../../features/admin/pages/AdminStats';
-import FeatureDirectory from '../../features/admin/pages/FeatureDirectory';
-import AdminSuffixSettings from '../../features/admin/pages/AdminSuffixSettings';
 import ProtectedRoute from '../../components/ProtectedRoute';
+
+const AdminDashboard = lazy(() => import('../../features/admin/pages/AdminDashboard'));
+const AdminStats = lazy(() => import('../../features/admin/pages/AdminStats'));
+const FeatureDirectory = lazy(() => import('../../features/admin/pages/FeatureDirectory'));
+const AdminSuffixSettings = lazy(() => import('../../features/admin/pages/AdminSuffixSettings'));
 
 interface AdminRoutesProps {
   isAdmin: boolean;

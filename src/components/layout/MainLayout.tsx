@@ -83,12 +83,6 @@ export const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }
           </div>
 
           <div className="flex items-center gap-3 md:gap-6">
-            {/* Elegant AI Sparkles Icon next to profile photo */}
-            <div className="flex items-center gap-1.5 px-3 py-1 bg-indigo-50 border border-indigo-100/50 rounded-full text-indigo-600 font-bold text-xs select-none shadow-sm">
-              <span className="text-sm">✨</span>
-              <span>AI</span>
-            </div>
-
             <div className="flex items-center gap-2 md:gap-4">
               <div className="w-8 h-8 md:w-10 md:h-10 rounded-xl bg-gray-100 border border-gray-200 overflow-hidden flex items-center justify-center">
                 {user?.photoURL ? (

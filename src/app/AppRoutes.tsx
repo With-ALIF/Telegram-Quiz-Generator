@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { Suspense } from 'react';
 import { Routes } from 'react-router-dom';
 import { useAppInit } from './useAppInit';
 import { useDrafts } from '../features/draft/hooks/useDrafts';
@@ -10,6 +10,12 @@ import { useUserRoutes } from './routes/UserRoutes';
 interface AppRoutesProps {
   appState: ReturnType<typeof useAppInit>;
 }
+
+const PageLoader = () => (
+  <div className="flex items-center justify-center min-h-[60vh]">
+    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600" />
+  </div>
+);
 
 export default function AppRoutes({ appState }: AppRoutesProps) {
   const { quiz, pendingQuestions } = appState;
@@ -35,10 +41,12 @@ export default function AppRoutes({ appState }: AppRoutesProps) {
   const userRoutes = useUserRoutes({ appState });
 
   return (
-    <Routes>
-      {adminRoutes}
-      {featureRoutes}
-      {userRoutes}
-    </Routes>
+    <Suspense fallback={<PageLoader />}>
+      <Routes>
+        {adminRoutes}
+        {featureRoutes}
+        {userRoutes}
+      </Routes>
+    </Suspense>
   );
 }

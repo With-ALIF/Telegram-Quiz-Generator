@@ -10,7 +10,6 @@ import { PermissionModal } from '../components/management/PermissionModal';
 import { DeleteConfirmModal } from '../components/management/DeleteConfirmModal';
 import { ResetPasswordModal } from '../components/management/ResetPasswordModal';
 import { AdminUser } from '../types';
-import { generateGlobalUserReportPDF } from '../utils/pdfExport';
 import { Users, CheckSquare, Sparkles } from 'lucide-react';
 
 export default function AdminDashboard() {
@@ -39,13 +38,15 @@ export default function AdminDashboard() {
     setUserToResetPassword(user);
   };
 
-  const handleDownloadGlobalPDF = () => {
+  const handleDownloadGlobalPDF = async () => {
     setIsExporting(true);
     try {
       const usersToExport = (Array.isArray(selectedUserIds) && selectedUserIds.length > 0)
         ? filteredUsers.filter(u => selectedUserIds.includes(u.id))
         : filteredUsers;
-      generateGlobalUserReportPDF(usersToExport);
+      // Load the PDF module (and jspdf inside it) only on demand.
+      const { generateGlobalUserReportPDF } = await import('../utils/pdfExport');
+      await generateGlobalUserReportPDF(usersToExport);
     } catch (error) {
       console.error('Error generating global PDF:', error);
       alert('Failed to generate user list PDF.');

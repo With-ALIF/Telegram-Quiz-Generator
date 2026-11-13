@@ -14,7 +14,8 @@ export default defineConfig(({ mode }) => {
         registerType: 'autoUpdate',
         includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
         workbox: {
-          maximumFileSizeToCacheInBytes: 5242880, // 5 MiB
+          maximumFileSizeToCacheInBytes: 5242880, 
+          globIgnores: ['**/pdf-vendor-*.js'],
         },
         manifest: {
           name: 'TeleQuiz',
@@ -37,9 +38,24 @@ export default defineConfig(({ mode }) => {
         '@': path.resolve(__dirname, '.'),
       },
     },
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            const normalized = id.replace(/\\/g, '/');
+            if (
+              normalized.includes('/node_modules/jspdf') ||
+              normalized.includes('/node_modules/html2canvas') ||
+              normalized.includes('/node_modules/dompurify') ||
+              normalized.includes('/node_modules/canvg')
+            ) {
+              return 'pdf-vendor';
+            }
+          },
+        },
+      },
+    },
     server: {
-      // HMR is disabled in AI Studio via DISABLE_HMR env var.
-      // Do not modifyâfile watching is disabled to prevent flickering during agent edits.
       hmr: process.env.DISABLE_HMR !== 'true',
     },
   };

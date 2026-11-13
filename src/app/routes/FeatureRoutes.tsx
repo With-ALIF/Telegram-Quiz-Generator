@@ -1,12 +1,13 @@
-import React from 'react';
+import React, { lazy } from 'react';
 import { Route } from 'react-router-dom';
 import QuizInput from '../../features/quiz/components/editor/QuizInput';
 import QuizList from '../../features/quiz/components/list/QuizList';
-import DraftPage from '../../features/draft/pages/DraftPage';
-import OCRPage from '../../features/admin/pages/OCRPage';
 import ProtectedRoute from '../../components/ProtectedRoute';
-import RapidFirePage from '../../features/rapid-fire/RapidFirePage';
 import { useAppInit } from '../useAppInit';
+
+const DraftPage = lazy(() => import('../../features/draft/pages/DraftPage'));
+const OCRPage = lazy(() => import('../../features/admin/pages/OCRPage'));
+const RapidFirePage = lazy(() => import('../../features/rapid-fire/RapidFirePage'));
 
 interface FeatureRoutesProps {
   appState: ReturnType<typeof useAppInit>;

@@ -1,9 +1,12 @@
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
 import { QuizQuestion } from '../../../types';
 import { AdminUser } from '../types';
 
-export const generateGlobalUserReportPDF = (users: AdminUser[]) => {
+export const generateGlobalUserReportPDF = async (users: AdminUser[]) => {
+  // jspdf is heavy (~690 KB). Load it only when a PDF is actually exported.
+  const [{ default: jsPDF }, { default: autoTable }] = await Promise.all([
+    import('jspdf'),
+    import('jspdf-autotable'),
+  ]);
   const doc = new jsPDF();
   
   // Professional Brand Color Swatches
@@ -183,7 +186,11 @@ export const generateGlobalUserReportPDF = (users: AdminUser[]) => {
   doc.save(`TeleQuiz_User_Report_${new Date().getTime()}.pdf`);
 };
 
-export const generateUserQuizPDF = (displayName: string, email: string, quizzes: QuizQuestion[]) => {
+export const generateUserQuizPDF = async (displayName: string, email: string, quizzes: QuizQuestion[]) => {
+  const [{ default: jsPDF }, { default: autoTable }] = await Promise.all([
+    import('jspdf'),
+    import('jspdf-autotable'),
+  ]);
   const doc = new jsPDF();
   
   const primaryColor = [67, 56, 202]; // Indigo 700
