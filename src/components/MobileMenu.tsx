@@ -6,7 +6,6 @@ import {
   FileText, 
   CheckSquare, 
   Layout, 
-  FileSpreadsheet, 
   Info, 
   Settings, 
   LogOut, 
@@ -14,9 +13,7 @@ import {
   User,
   Shield,
   BarChart3,
-  Database,
   Camera,
-  Sparkles,
   Zap
 } from 'lucide-react';
 import { useAuth } from '../features/auth/hooks/useAuth';
@@ -96,13 +93,6 @@ export default function MobileMenu({ user, profilePhoto, displayName, logout, to
           </NavLink>
         )}
         
-        {user && !isAdmin && hasPermission('note') && (
-          <NavLink to="/note" onClick={toggleMenu} className={linkClass}>
-            <FileText className="w-5 h-5" />
-            Smart Note
-          </NavLink>
-        )}
-        
         {user && !isAdmin && hasPermission('drafts') && (
           <NavLink to="/drafts" onClick={toggleMenu} className={linkClass}>
             <FileText className="w-5 h-5" />
@@ -117,38 +107,10 @@ export default function MobileMenu({ user, profilePhoto, displayName, logout, to
           </NavLink>
         )}
         
-        {user && !isAdmin && hasPermission('qbs') && (
-          <NavLink to="/qbs" onClick={toggleMenu} className={linkClass}>
-            <Database className="w-5 h-5" />
-            QBS
-          </NavLink>
-        )}
-
-        {user && !isAdmin && hasPermission('photocard') && (
-          <NavLink to="/photocard" onClick={toggleMenu} className={linkClass}>
-            <Sparkles className="w-5 h-5" />
-            PhotoCard
-          </NavLink>
-        )}
-        
         {user && hasPermission('rapid-fire') && (
           <NavLink to="/rapid-fire" onClick={toggleMenu} className={linkClass}>
             <Zap className="w-5 h-5" />
             Rapid Fire
-          </NavLink>
-        )}
-        
-        {user && !isAdmin && hasPermission('formats') && (
-          <NavLink to="/channel-formats" onClick={toggleMenu} className={linkClass}>
-            <Layout className="w-5 h-5" />
-            Formats
-          </NavLink>
-        )}
-        
-        {user && !isAdmin && hasPermission('csv-modifier') && (
-          <NavLink to="/csv-modifier" onClick={toggleMenu} className={linkClass}>
-            <FileSpreadsheet className="w-5 h-5" />
-            CSV Modifier
           </NavLink>
         )}
         

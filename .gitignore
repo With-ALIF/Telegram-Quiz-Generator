@@ -14,3 +14,6 @@ fetch_*.cjs
 
 node_modules/
 package-lock.json
+
+# SQL files
+*.sql

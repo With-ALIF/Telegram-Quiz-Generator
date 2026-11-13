@@ -17,22 +17,6 @@
       "destination": "/api/quiz"
     },
     {
-      "source": "/api/photocard/generateOptions",
-      "destination": "/api/photocard"
-    },
-    {
-      "source": "/api/exam-paper/generate",
-      "destination": "/api/examPaper"
-    },
-    {
-      "source": "/api/note/format",
-      "destination": "/api/formatNote"
-    },
-    {
-      "source": "/api/formatNote",
-      "destination": "/api/formatNote"
-    },
-    {
       "source": "/api/(.*)",
       "destination": "/api/$1"
     },

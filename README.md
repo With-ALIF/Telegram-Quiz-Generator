@@ -1,5 +1,10 @@
 # Telegram Quiz Generator
 
+[![React 19](https://img.shields.io/badge/React_19-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)](https://react.dev/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Vite 6](https://img.shields.io/badge/Vite_6-646CFF?style=for-the-badge&logo=vite&logoColor=white)](https://vite.dev/)
+[![Tailwind CSS v4](https://img.shields.io/badge/Tailwind_CSS_v4-06B6D4?style=for-the-badge&logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
+
 An AI-powered web application that automatically generates multiple-choice quizzes from any text and sends them directly to your Telegram channel or group as native Telegram Polls.
 
 ## ✨ Features
@@ -38,8 +43,8 @@ An AI-powered web application that automatically generates multiple-choice quizz
 
 ## 🛠️ Tech Stack
 
-- **Frontend:** React 18, TypeScript, Vite
-- **Styling:** Tailwind CSS
+- **Frontend:** React 19, TypeScript, Vite 6
+- **Styling:** Tailwind CSS v4
 - **Icons:** Lucide React
 - **Animations:** Framer Motion
 - **Backend:** Supabase (SQL)

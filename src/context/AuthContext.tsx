@@ -98,14 +98,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             if (p) {
               if (p.polls) perms.push('polls');
               if (p.drafts) perms.push('drafts');
-              if (p.formats) perms.push('formats');
-              if (p.csv_modifier) perms.push('csv-modifier');
               if (p.ocr) perms.push('ocr');
-              if (p.photocard) perms.push('photocard');
-              if (p.exam_paper) perms.push('exam-paper');
-              if (p.note) perms.push('note');
               if (p.suffix_edit) perms.push('suffix-edit');
-              if (p.qbs) perms.push('qbs');
               if (p.rapid_fire || p['rapid-fire']) perms.push('rapid-fire');
             }
           }
@@ -157,14 +151,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               const perms = [];
               if (p.polls) perms.push('polls');
               if (p.drafts) perms.push('drafts');
-              if (p.formats) perms.push('formats');
-              if (p.csv_modifier) perms.push('csv-modifier');
               if (p.ocr) perms.push('ocr');
-              if (p.photocard) perms.push('photocard');
-              if (p.exam_paper) perms.push('exam-paper');
-              if (p.note) perms.push('note');
               if (p.suffix_edit) perms.push('suffix-edit');
-              if (p.qbs) perms.push('qbs');
               if (p.rapid_fire || p['rapid-fire']) perms.push('rapid-fire');
               
               setProfile((prev: any) => ({ ...prev, permissions: perms }));

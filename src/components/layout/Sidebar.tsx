@@ -10,7 +10,6 @@ import {
   Receipt, 
   Info, 
   UserCircle,
-  Sparkles,
   BarChart3,
   Shield,
   Settings,
@@ -18,8 +17,6 @@ import {
   Camera,
   FileText,
   CheckSquare,
-  Database,
-  FileSpreadsheet,
   Layout,
   Zap,
   LogOut
@@ -86,16 +83,10 @@ export const Sidebar: React.FC = () => {
         ) : (
           <>
             <NavItem to="/" icon={Home} label="Home" />
-            {hasPermission('note') && <NavItem to="/note" icon={FileText} label="Smart Note" />}
             {hasPermission('ocr') && <NavItem to="/ocr" icon={Camera} label="OCR Scan" />}
             {hasPermission('drafts') && <NavItem to="/drafts" icon={FileText} label="Drafts" />}
             {hasPermission('polls') && <NavItem to="/polls" icon={CheckSquare} label="Polls" />}
-            {hasPermission('qbs') && <NavItem to="/qbs" icon={Database} label="QBS" />}
-            {hasPermission('exam-paper') && <NavItem to="/exam-paper" icon={FileText} label="ExamPaper" />}
-            {hasPermission('photocard') && <NavItem to="/photocard" icon={Sparkles} label="PhotoCard" />}
             {hasPermission('rapid-fire') && <NavItem to="/rapid-fire" icon={Zap} label="Rapid Fire" />}
-            {hasPermission('formats') && <NavItem to="/channel-formats" icon={Layout} label="Formats" />}
-            {hasPermission('csv-modifier') && <NavItem to="/csv-modifier" icon={FileSpreadsheet} label="CSV Modifier" />}
           </>
         )}
       </nav>

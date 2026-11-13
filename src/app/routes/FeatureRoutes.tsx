@@ -3,14 +3,8 @@ import { Route } from 'react-router-dom';
 import QuizInput from '../../features/quiz/components/editor/QuizInput';
 import QuizList from '../../features/quiz/components/list/QuizList';
 import DraftPage from '../../features/draft/pages/DraftPage';
-import QBSPage from '../../features/qbs/pages/QBSPage';
 import OCRPage from '../../features/admin/pages/OCRPage';
-import ExamPaperPage from '../../features/exam-paper/pages/ExamPaperPage';
-import PhotoCardPage from '../../features/photocard/PhotoCardPage';
-import CSVModifier from '../../features/quiz/components/export/CSVModifier';
-import ChannelFormattingOverview from '../../features/settings/components/channel/ChannelFormattingOverview';
 import ProtectedRoute from '../../components/ProtectedRoute';
-import NotePage from '../../features/note/pages/NotePage';
 import RapidFirePage from '../../features/rapid-fire/RapidFirePage';
 import { useAppInit } from '../useAppInit';
 
@@ -130,58 +124,10 @@ export const useFeatureRoutes = ({ appState, handleDraftSelected }: FeatureRoute
         } 
       />
       <Route 
-        path="/qbs" 
-        element={
-          <ProtectedRoute permission="qbs">
-            <QBSPage />
-          </ProtectedRoute>
-        } 
-      />
-      <Route 
         path="/ocr" 
         element={
           <ProtectedRoute permission="ocr">
             <OCRPage appState={appState} handleDraftSelected={handleDraftSelected} />
-          </ProtectedRoute>
-        } 
-      />
-      <Route 
-        path="/csv-modifier" 
-        element={
-          <ProtectedRoute permission="csv-modifier">
-            <CSVModifier />
-          </ProtectedRoute>
-        } 
-      />
-      <Route 
-        path="/channel-formats" 
-        element={
-          <ProtectedRoute permission="formats">
-            <ChannelFormattingOverview settings={settings.settings} />
-          </ProtectedRoute>
-        } 
-      />
-      <Route 
-        path="/photocard" 
-        element={
-          <ProtectedRoute permission="photocard">
-            <PhotoCardPage />
-          </ProtectedRoute>
-        } 
-      />
-      <Route 
-        path="/exam-paper" 
-        element={
-          <ProtectedRoute permission="exam-paper">
-            <ExamPaperPage />
-          </ProtectedRoute>
-        } 
-      />
-      <Route 
-        path="/note" 
-        element={
-          <ProtectedRoute permission="note">
-            <NotePage />
           </ProtectedRoute>
         } 
       />

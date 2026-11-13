@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { Home, FileText, CheckSquare, Layout, FileSpreadsheet, Info, Shield, BarChart3, Database, Settings, Camera, Sparkles, Zap } from 'lucide-react';
+import { Home, FileText, CheckSquare, Layout, Info, Shield, BarChart3, Settings, Camera, Zap } from 'lucide-react';
 import { useAuth } from '../features/auth/hooks/useAuth';
 
 export default function DesktopNav({ user }: { user: any }) {
@@ -45,13 +45,6 @@ export default function DesktopNav({ user }: { user: any }) {
         </NavLink>
       )}
 
-      {user && !isAdmin && hasPermission('note') && (
-        <NavLink to="/note" className={linkClass}>
-          <FileText className="w-4 h-4" />
-          Smart Note
-        </NavLink>
-      )}
-
       {user && !isAdmin && hasPermission('ocr') && (
         <NavLink to="/ocr" className={linkClass}>
           <Camera className="w-4 h-4" />
@@ -71,34 +64,10 @@ export default function DesktopNav({ user }: { user: any }) {
           Polls
         </NavLink>
       )}
-      {user && !isAdmin && hasPermission('qbs') && (
-        <NavLink to="/qbs" className={linkClass}>
-          <Database className="w-4 h-4" />
-          QBS
-        </NavLink>
-      )}
-      {user && !isAdmin && (
-        <NavLink to="/photocard" className={linkClass}>
-          <Sparkles className="w-4 h-4" />
-          PhotoCard
-        </NavLink>
-      )}
       {user && hasPermission('rapid-fire') && (
         <NavLink to="/rapid-fire" className={linkClass}>
           <Zap className="w-4 h-4" />
           Rapid Fire
-        </NavLink>
-      )}
-      {user && !isAdmin && hasPermission('formats') && (
-        <NavLink to="/channel-formats" className={linkClass}>
-          <Layout className="w-4 h-4" />
-          Formats
-        </NavLink>
-      )}
-      {user && !isAdmin && hasPermission('csv-modifier') && (
-        <NavLink to="/csv-modifier" className={linkClass}>
-          <FileSpreadsheet className="w-4 h-4" />
-          CSV Modifier
         </NavLink>
       )}
       

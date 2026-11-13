@@ -5,10 +5,7 @@ import { createClient } from '@supabase/supabase-js';
 import * as dotenv from 'dotenv';
 import webhookHandler from "./api/webhook.ts";
 import setupHandler from "./api/setup.ts";
-import formatNoteHandler from "./api/formatNote.ts";
 import quizHandler from "./api/quiz.ts";
-import photocardHandler from "./api/photocard.ts";
-import examPaperHandler from "./api/examPaper.ts";
 
 dotenv.config({ override: true });
 
@@ -237,7 +234,7 @@ async function startServer() {
           if (typeof req.body === 'string') {
             init.body = req.body;
           } else if (Buffer.isBuffer(req.body)) {
-            init.body = req.body;
+            init.body = new Uint8Array(req.body);
           } else if (Object.keys(req.body).length > 0) {
             init.body = JSON.stringify(req.body);
           }
@@ -289,12 +286,8 @@ async function startServer() {
   
   app.post("/api/webhook", (req, res) => webhookHandler(req, res));
   app.get("/api/setup", (req, res) => setupHandler(req, res));
-  app.post("/api/note/format", (req, res) => formatNoteHandler(req, res));
-  app.post("/api/formatNote", (req, res) => formatNoteHandler(req, res));
   app.post("/api/quiz/generate", (req, res) => quizHandler(req, res));
   app.post("/api/quiz/generateFromImage", (req, res) => quizHandler(req, res));
-  app.post("/api/photocard/generateOptions", (req, res) => photocardHandler(req, res));
-  app.post("/api/exam-paper/generate", (req, res) => examPaperHandler(req, res));
   
   function getTelegramBotToken(req?: express.Request): string | null {
     const candidates = [
@@ -701,14 +694,8 @@ async function startServer() {
         id: userId,
         polls: (permissions || []).includes('polls'),
         drafts: (permissions || []).includes('drafts'),
-        formats: (permissions || []).includes('formats'),
-        csv_modifier: (permissions || []).includes('csv-modifier'),
         ocr: (permissions || []).includes('ocr'),
-        photocard: (permissions || []).includes('photocard'),
-        exam_paper: (permissions || []).includes('exam-paper'),
-        note: (permissions || []).includes('note'),
         suffix_edit: (permissions || []).includes('suffix-edit'),
-        qbs: (permissions || []).includes('qbs'),
         rapid_fire: (permissions || []).includes('rapid-fire'),
       };
 
@@ -795,14 +782,8 @@ async function startServer() {
         id: createdUser.id,
         polls: (permissions || []).includes('polls'),
         drafts: (permissions || []).includes('drafts'),
-        formats: (permissions || []).includes('formats'),
-        csv_modifier: (permissions || []).includes('csv-modifier'),
         ocr: (permissions || []).includes('ocr'),
-        photocard: (permissions || []).includes('photocard'),
-        exam_paper: (permissions || []).includes('exam-paper'),
-        note: (permissions || []).includes('note'),
         suffix_edit: (permissions || []).includes('suffix-edit'),
-        qbs: (permissions || []).includes('qbs'),
         rapid_fire: (permissions || []).includes('rapid-fire'),
       };
 
@@ -956,14 +937,8 @@ async function startServer() {
            if (p) {
              if (p.polls) perms.push('polls');
              if (p.drafts) perms.push('drafts');
-             if (p.formats) perms.push('formats');
-             if (p.csv_modifier) perms.push('csv-modifier');
              if (p.ocr) perms.push('ocr');
-             if (p.photocard) perms.push('photocard');
-             if (p.exam_paper) perms.push('exam-paper');
-             if (p.note) perms.push('note');
              if (p.suffix_edit) perms.push('suffix-edit');
-             if (p.qbs) perms.push('qbs');
               if (p.rapid_fire || p['rapid-fire']) perms.push('rapid-fire');
            }
          }

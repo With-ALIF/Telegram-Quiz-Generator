@@ -16,8 +16,6 @@ export const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }
   const getPageTitle = () => {
     const path = location.pathname.split('/').pop() || 'Dashboard';
     if (path.toLowerCase() === 'ocr') return 'OCR';
-    if (path.toLowerCase() === 'qbs') return 'QBS';
-    if (path.toLowerCase() === 'photocard') return 'PhotoCard';
     return path.charAt(0).toUpperCase() + path.slice(1).replace(/-/g, ' ');
   };
 
