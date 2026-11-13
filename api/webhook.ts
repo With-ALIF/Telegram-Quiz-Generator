@@ -1,27 +1,37 @@
 import TelegramBot from 'node-telegram-bot-api';
 
-const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || "";
+const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || process.env.VITE_TELEGRAM_BOT_TOKEN || "8783681142:AAE-1mDudEvYuT3RTRjg8h6ZzkLcIgKTM1Q";
 const bot = BOT_TOKEN ? new TelegramBot(BOT_TOKEN) : null;
 
-const welcomeMessage = (chatId: string) => `👋 স্বাগতম!
+const welcomeMessage = (chatId: string) => `*TeleQuiz AI Platform*
+_Smart & Instant Telegram Quiz Generator_
 
-আপনি এখন TeleQuiz AI Bot ব্যবহার করছেন 🎯
-এই বটের মাধ্যমে খুব সহজেই কুইজ তৈরি করে Telegram-এ শেয়ার করতে পারবেন।
+আপনার যেকোনো পড়ার নোট, আর্টিকেল বা প্রশ্নমালা থেকে সেকেন্ডেই নির্ভুল কুইজ তৈরি করে সরাসরি আপনার Telegram চ্যানেল ও গ্রুপে Poll আকারে পাবলিশ করুন।
 
-🌐 Web App ব্যবহার করুন:
-👉 "TeleQuiz AI Web App খুলুন" http://poll.mnr.bd/
+━━━━━━━━━━━━━━━━━━━━━
+*আপনার Chat ID:* \`${chatId}\`
+_(আইডিটিতে চাপ দিয়ে কপি করে Web App-এর Settings-এ যুক্ত করুন)_
+━━━━━━━━━━━━━━━━━━━━━
 
-🔑 **আপনার Chat ID:** \`${chatId}\`
-(এই ID টি কপি করে Web App এর Settings-এ বসান)
+*মূল সুবিধাসমূহ (Features):*
+• *AI Quiz Maker:* AI দিয়ে স্বয়ংক্রিয় MCQ ও সঠিক উত্তর জেনারেশন
+• *Direct Poll Dispatch:* টেলিগ্রামে সিঙ্গেল বা একসাথে সব কুইজ পাঠানোর সুবিধা
+• *Real-Time Sync:* ড্রাফট সংরক্ষণ ও রিয়েল-টাইম স্ট্যাটাস ট্র্যাকিং
+• *Branding Control:* নিজস্ব প্রিফিক্স ও কাস্টম সাফিক্স যুক্ত করার সুযোগ
 
-🛠️ কিভাবে ব্যবহার করবেন:
-1️⃣ উপরের Web App-এ প্রবেশ করুন
-2️⃣ আপনার টেক্সট / নোট পেস্ট করুন
-3️⃣ Generate Quiz বাটনে ক্লিক করুন
-4️⃣ Settings এ গিয়ে আপনার Chat ID বসান
-5️⃣ Send to Channel চাপ দিয়ে Telegram-এ পাঠান
+*শুরু করতে নিচের "Visit Website" বাটনে ট্যাপ করুন।*
+যেকোনো সহায়তার জন্য সরাসরি অ্যাডমিনের সাথে যোগাযোগ করতে পারেন।`;
 
-🚀 দ্রুত, সহজ এবং স্মার্ট কুইজ তৈরির জন্য TeleQuiz AI ব্যবহার করুন!`;
+const defaultKeyboard = {
+  inline_keyboard: [
+    [
+      { text: 'Visit Website', url: 'https://poll.mnr.bd' }
+    ],
+    [
+      { text: 'Admin Support', url: 'https://t.me/ALIF1230' }
+    ]
+  ]
+};
 
 export default async function handler(req: any, res: any) {
   if (req.method === 'POST') {
@@ -43,11 +53,19 @@ export default async function handler(req: any, res: any) {
         if (text.startsWith('/start')) {
           await bot.sendMessage(chatId, welcomeMessage(chatId), { 
             parse_mode: 'Markdown',
-            disable_web_page_preview: true 
+            disable_web_page_preview: true,
+            reply_markup: defaultKeyboard
           });
         } else if (text.toLowerCase().startsWith('/id') || text.toLowerCase().startsWith('/chatid')) {
-          // Always reply to explicit ID commands
-          await bot.sendMessage(chatId, `আপনার Chat ID হলো: \`${chatId}\`\nএটি কপি করে Web App এর Settings এ বসান।`, { parse_mode: 'Markdown' });
+          await bot.sendMessage(chatId, `*আপনার Chat ID:* \`${chatId}\`\n\nএটি কপি করে Web App-এর Settings-এ যুক্ত করুন।`, { 
+            parse_mode: 'Markdown',
+            reply_markup: defaultKeyboard
+          });
+        } else if (text.toLowerCase().startsWith('/help')) {
+          await bot.sendMessage(chatId, `*TeleQuiz AI Help & Support*\n\n• ওয়েবসাইট ভিজিট করতে: https://poll.mnr.bd\n• আপনার Chat ID পেতে: \`/id\`\n• অ্যাডমিনের সাথে যোগাযোগ করতে: @ALIF1230`, {
+            parse_mode: 'Markdown',
+            reply_markup: defaultKeyboard
+          });
         }
       }
     } catch (e) {
