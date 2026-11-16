@@ -13,8 +13,6 @@ import { PermissionModal } from '../components/management/PermissionModal';
 import { DeleteConfirmModal } from '../components/management/DeleteConfirmModal';
 import { ResetPasswordModal } from '../components/management/ResetPasswordModal';
 import { AdminUser, ManagedUser } from '../types';
-import { AVAILABLE_PAGES } from '../constants';
-import { exportUsersCsv, toManagedUser } from '../utils/adminUtils';
 import { updateUserPermissions } from '../services/adminService';
 import { toast, ToastHost } from '../../../components/ui/Toast';
 
@@ -36,7 +34,6 @@ export default function AdminDashboard() {
 
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [openFeatureUserId, setOpenFeatureUserId] = useState<string | null>(null);
-  const [assignOpen, setAssignOpen] = useState(false);
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState(false);
 
@@ -53,12 +50,6 @@ export default function AdminDashboard() {
     () => displayRaw.filter(u => selectedIds.includes(u.id)),
     [displayRaw, selectedIds]
   );
-
-  const commonFeatures = useMemo(() => {
-    if (selectedRaw.length === 0) return [];
-    const sets = selectedRaw.map(u => new Set(u.permissions ?? []));
-    return AVAILABLE_PAGES.filter(page => sets.every(s => s.has(page.id))).map(page => page.id);
-  }, [selectedRaw]);
 
   /* ---------------- selection ---------------- */
 
@@ -89,41 +80,20 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleBulkToggleFeature = async (featureId: string, enabled: boolean) => {
-    if (selectedRaw.length === 0) return;
-    const updates: Record<string, string[]> = {};
-    selectedRaw.forEach(u => {
-      const current = u.permissions ?? [];
-      updates[u.id] = enabled
-        ? Array.from(new Set([...current, featureId]))
-        : current.filter(p => p !== featureId);
-    });
-
-    setOverrides(prev => ({ ...prev, ...updates })); // optimistic update
-    try {
-      await Promise.all(selectedRaw.map(u => updateUserPermissions(u.id, updates[u.id])));
-      toast.success(
-        `${enabled ? 'Assigned' : 'Removed'} feature for ${selectedRaw.length} user${selectedRaw.length === 1 ? '' : 's'}.`
-      );
-    } catch {
-      setOverrides(prev => {
-        const copy = { ...prev };
-        selectedRaw.forEach(u => delete copy[u.id]);
-        return copy;
-      }); // rollback
-      toast.error('Bulk update failed — changes were reverted.');
-    }
-  };
-
-  /* ---------------- bulk actions ---------------- */
+  /* ---------------- bulk & report actions ---------------- */
 
   const handleGenerateReport = async () => {
-    if (selectedRaw.length === 0) return;
+    const targetUsers = selectedRaw.length > 0 ? selectedRaw : filters.users;
+    if (targetUsers.length === 0) {
+      toast.error('No users available to generate report.');
+      return;
+    }
     setIsExporting(true);
     try {
       // Load the PDF module (and jspdf inside it) only on demand.
       const { generateGlobalUserReportPDF } = await import('../utils/pdfExport');
-      await generateGlobalUserReportPDF(selectedRaw);
+      await generateGlobalUserReportPDF(targetUsers);
+      toast.success(`Exported PDF report for ${targetUsers.length} user${targetUsers.length === 1 ? '' : 's'}.`);
     } catch (error) {
       console.error('Error generating user report PDF:', error);
       toast.error('Failed to generate user report PDF.');
@@ -132,13 +102,14 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleExport = () => {
+  const handleDownloadSingleReport = async (user: ManagedUser) => {
     try {
-      exportUsersCsv(selectedRaw.map(toManagedUser));
-      toast.success(`Exported ${selectedRaw.length} user${selectedRaw.length === 1 ? '' : 's'} to CSV.`);
+      const { generateSingleUserSummaryPDF } = await import('../utils/pdfExport');
+      await generateSingleUserSummaryPDF(user);
+      toast.success(`Exported PDF report for ${user.name}.`);
     } catch (error) {
-      console.error('CSV export failed:', error);
-      toast.error('Failed to export users.');
+      console.error('Error generating single user PDF report:', error);
+      toast.error('Failed to generate user PDF report.');
     }
   };
 
@@ -200,7 +171,11 @@ export default function AdminDashboard() {
   return (
     <div className="mx-auto max-w-6xl px-4 pb-8 pt-2">
       <ToastHost />
-      <AdminHeader onCreateClick={() => setShowCreateModal(true)} />
+      <AdminHeader 
+        onCreateClick={() => setShowCreateModal(true)} 
+        onDownloadReport={handleGenerateReport}
+        isDownloadingReport={isExporting}
+      />
 
       <UserToolbar
         search={filters.search}
@@ -222,12 +197,6 @@ export default function AdminDashboard() {
         count={selectedIds.length}
         onClear={() => setSelectedIds([])}
         onGenerateReport={handleGenerateReport}
-        onExport={handleExport}
-        assignOpen={assignOpen}
-        onToggleAssign={() => setAssignOpen(prev => !prev)}
-        onCloseAssign={() => setAssignOpen(false)}
-        commonFeatures={commonFeatures}
-        onToggleFeature={handleBulkToggleFeature}
         busy={isExporting || actionLoading}
       />
 
@@ -272,6 +241,7 @@ export default function AdminDashboard() {
               onManageAccess={() => handleOpenPermissions(user)}
               onDelete={() => handleInitiateDelete(user)}
               onResetPassword={() => handleInitiateResetPassword(user)}
+              onDownloadReport={() => handleDownloadSingleReport(user)}
             />
           ))}
         </div>

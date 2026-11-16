@@ -24,7 +24,8 @@ async function verifyAdmin(req: any): Promise<boolean> {
     }
 
     // Direct, clean supabase client creation matching server.ts exactly
-    const instance = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    const keyForAuth = SUPABASE_ANON_KEY || SUPABASE_SERVICE_ROLE_KEY;
+    const instance = createClient(SUPABASE_URL, keyForAuth, {
       auth: { autoRefreshToken: false, persistSession: false }
     });
     const { data: { user }, error } = await instance.auth.getUser(token);
@@ -81,7 +82,8 @@ export default async function handler(req: any, res: any) {
     switch (action) {
       case 'save-config': {
         if (req.method !== 'POST') return res.status(405).json({ error: 'Method Not Allowed' });
-        const { key, value } = req.body;
+        const body = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
+        const { key, value } = body;
         if (!key || !value) {
           return res.status(400).json({ error: "Invalid configuration data. Key and value are required." });
         }
@@ -348,31 +350,6 @@ export default async function handler(req: any, res: any) {
         }
 
         return res.status(200).json({ success: true });
-      }
-
-      case 'save-config': {
-        if (req.method !== 'POST') return res.status(405).json({ error: 'Method Not Allowed' });
-        const { key, value } = req.body || {};
-        if (!key) {
-          return res.status(400).json({ error: "Key is required." });
-        }
-
-        const { data, error } = await supabaseAdmin
-          .from('system_config')
-          .upsert({
-            key,
-            updated_by: value?.updated_by || 'Admin',
-            default_suffix: value?.default_suffix ?? '',
-            updated_at: new Date().toISOString()
-          }, { onConflict: 'key' })
-          .select();
-
-        if (error) {
-          console.error("Supabase upsert error in api/admin save-config:", error);
-          return res.status(400).json({ error: error.message });
-        }
-
-        return res.status(200).json({ success: true, data });
       }
 
       default: {

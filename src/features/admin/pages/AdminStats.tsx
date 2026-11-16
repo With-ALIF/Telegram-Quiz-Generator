@@ -1,8 +1,7 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Users, Layout, FileQuestion, Send, Shield, UserPlus } from 'lucide-react';
 import { useAdminUsers } from '../hooks/useAdminUsers';
 import { AVAILABLE_PAGES } from '../constants';
-import { supabase } from '../../../lib/supabase';
 import { isRegularUser, timeAgo } from '../utils/adminUtils';
 import StatCard from '../components/stats/StatCard';
 import RecentActivity, { ActivityEvent } from '../components/stats/RecentActivity';
@@ -25,29 +24,6 @@ export default function AdminStats() {
     const cutoff = Date.now() / 1000 - 30 * 24 * 3600;
     return members.filter(u => (u.createdAt?.seconds || 0) >= cutoff).length;
   }, [members]);
-
-  // Sync user count and poll count to global stats
-  useEffect(() => {
-    if (!loading && regularUsersCount > 0) {
-      const syncStats = async () => {
-        try {
-          await supabase
-            .from('system_stats')
-            .upsert({
-              key: 'stats',
-              user_count: regularUsersCount,
-              total_polls_generated: totalPollsGenerated,
-              total_polls_sent: totalPollsSent,
-              updated_at: new Date().toISOString()
-            });
-          setSyncedAt(Date.now() / 1000);
-        } catch (error) {
-          console.error("Failed to sync stats", error);
-        }
-      };
-      syncStats();
-    }
-  }, [loading, regularUsersCount, totalPollsGenerated, totalPollsSent]);
 
   // Recent activity: newest signups first, then all-time stat events
   const events: ActivityEvent[] = useMemo(() => {

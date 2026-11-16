@@ -18,7 +18,7 @@ export const fetchAppConfig = async (): Promise<AppConfig | null> => {
     if (data) {
       const config: AppConfig = {
         updated_by: data.updated_by || 'System',
-        default_suffix: data.default_suffix || '{{  join: https://t.me/SOT_Academy}}',
+        default_suffix: data.default_suffix !== undefined && data.default_suffix !== null ? data.default_suffix : 'Join: https://t.me/SOT_Academy',
         updated_at: data.updated_at || new Date().toISOString()
       };
       localStorage.setItem('app_config', JSON.stringify(config));
@@ -32,14 +32,14 @@ export const fetchAppConfig = async (): Promise<AppConfig | null> => {
         try {
             const parsed = JSON.parse(cached);
             if (!parsed.default_suffix || parsed.default_suffix.trim() === '') {
-                parsed.default_suffix = '{{  join: https://t.me/SOT_Academy}}';
+                parsed.default_suffix = 'Join: https://t.me/SOT_Academy';
             }
             return parsed;
         } catch(e) {}
     }
     return {
         updated_by: 'System',
-        default_suffix: '{{  join: https://t.me/SOT_Academy}}',
+        default_suffix: 'Join: https://t.me/SOT_Academy',
         updated_at: new Date().toISOString()
     };
   }

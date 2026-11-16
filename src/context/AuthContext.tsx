@@ -195,7 +195,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (data) {
           const config = {
             updated_by: data.updated_by || 'System',
-            default_suffix: data.default_suffix || '{{  join: https://t.me/SOT_Academy}}',
+            default_suffix: data.default_suffix !== undefined && data.default_suffix !== null ? data.default_suffix : 'Join: https://t.me/SOT_Academy',
             updated_at: data.updated_at || new Date().toISOString()
           };
           localStorage.setItem('app_config', JSON.stringify(config));
@@ -205,7 +205,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.warn("Could not load app configuration from API. Using fallback.", err);
         const fallbackConfig = {
           updated_by: 'System',
-          default_suffix: '{{  join: https://t.me/SOT_Academy}}',
+          default_suffix: 'Join: https://t.me/SOT_Academy',
           updated_at: new Date().toISOString()
         };
         const cached = localStorage.getItem('app_config');

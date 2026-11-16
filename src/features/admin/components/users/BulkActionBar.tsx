@@ -1,34 +1,17 @@
 import React from 'react';
-import { Download, FileText, Sparkles, X } from 'lucide-react';
-import { FeaturePopover } from './FeaturePopover';
+import { FileText, X } from 'lucide-react';
 
 interface BulkActionBarProps {
   count: number;
   onClear: () => void;
   onGenerateReport: () => void;
-  onExport: () => void;
-  assignOpen: boolean;
-  onToggleAssign: () => void;
-  onCloseAssign: () => void;
-  /** features every selected user already has (popover checkbox state) */
-  commonFeatures: string[];
-  onToggleFeature: (featureId: string, enabled: boolean) => void;
   busy?: boolean;
 }
-
-const buttonClass =
-  'flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 shadow-sm transition-colors';
 
 export const BulkActionBar: React.FC<BulkActionBarProps> = ({
   count,
   onClear,
   onGenerateReport,
-  onExport,
-  assignOpen,
-  onToggleAssign,
-  onCloseAssign,
-  commonFeatures,
-  onToggleFeature,
   busy = false,
 }) => {
   if (count <= 0) return null;
@@ -52,33 +35,6 @@ export const BulkActionBar: React.FC<BulkActionBarProps> = ({
           >
             <FileText className="h-4 w-4" aria-hidden="true" />
             Generate report
-          </button>
-
-          <div className="relative">
-            <button
-              type="button"
-              onClick={onToggleAssign}
-              aria-haspopup="dialog"
-              aria-expanded={assignOpen}
-              disabled={busy}
-              className={buttonClass}
-            >
-              <Sparkles className="h-4 w-4 text-blue-600" aria-hidden="true" />
-              Assign feature
-            </button>
-            <FeaturePopover
-              open={assignOpen}
-              onClose={onCloseAssign}
-              title="Assign feature to selection"
-              activeFeatures={commonFeatures}
-              onToggle={onToggleFeature}
-              align="right"
-            />
-          </div>
-
-          <button type="button" onClick={onExport} disabled={busy} className={buttonClass}>
-            <Download className="h-4 w-4 text-slate-500" aria-hidden="true" />
-            Export
           </button>
 
           <button

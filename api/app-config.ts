@@ -4,12 +4,12 @@ export default async function handler(req: any, res: any) {
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
   
   try {
-    const keyToUse = SUPABASE_ANON_KEY || SUPABASE_SERVICE_ROLE_KEY;
+    const keyToUse = SUPABASE_SERVICE_ROLE_KEY || SUPABASE_ANON_KEY;
     
     if (!keyToUse || !SUPABASE_URL) {
       console.warn("Supabase keys are missing. Returning default fallback config.");
       return res.status(200).json({
-        default_suffix: '{{  join: https://t.me/SOT_Academy}}',
+        default_suffix: 'Join: https://t.me/SOT_Academy',
         updated_by: 'System',
         updated_at: new Date().toISOString()
       });
@@ -24,24 +24,33 @@ export default async function handler(req: any, res: any) {
       .single();
     
     if (error && error.code !== 'PGRST116') {
-      throw error;
+      console.warn("Could not query system_config:", error.message);
+      return res.status(200).json({
+        default_suffix: 'Join: https://t.me/SOT_Academy',
+        updated_by: 'System',
+        updated_at: new Date().toISOString()
+      });
     }
     
     if (!data) {
       return res.status(200).json({
-        default_suffix: '{{  join: https://t.me/SOT_Academy}}',
+        default_suffix: 'Join: https://t.me/SOT_Academy',
         updated_by: 'System',
         updated_at: new Date().toISOString()
       });
     }
 
     if (data.default_suffix === null || data.default_suffix === undefined) {
-        data.default_suffix = '{{  join: https://t.me/SOT_Academy}}';
+        data.default_suffix = 'Join: https://t.me/SOT_Academy';
     }
 
     res.status(200).json(data);
   } catch (err: any) {
     console.error("Error in app-config API:", err);
-    res.status(500).json({ error: err.message || "Internal server error" });
+    return res.status(200).json({
+      default_suffix: 'Join: https://t.me/SOT_Academy',
+      updated_by: 'System',
+      updated_at: new Date().toISOString()
+    });
   }
 }

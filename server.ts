@@ -1016,10 +1016,10 @@ async function startServer() {
 
   app.get("/api/app-config", async (req, res) => {
     try {
-      const keyToUse = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || SUPABASE_SERVICE_ROLE_KEY;
+      const keyToUse = SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
       if (!keyToUse || !SUPABASE_URL) {
         return res.json({
-          default_suffix: '{{  join: https://t.me/SOT_Academy}}',
+          default_suffix: 'Join: https://t.me/SOT_Academy',
           updated_by: 'System',
           updated_at: new Date().toISOString()
         });
@@ -1040,14 +1040,14 @@ async function startServer() {
       
       if (!data) {
         return res.json({
-          default_suffix: '{{  join: https://t.me/SOT_Academy}}',
+          default_suffix: 'Join: https://t.me/SOT_Academy',
           updated_by: 'System',
           updated_at: new Date().toISOString()
         });
       }
 
       if (data.default_suffix === null || data.default_suffix === undefined) {
-          data.default_suffix = '{{  join: https://t.me/SOT_Academy}}';
+          data.default_suffix = 'Join: https://t.me/SOT_Academy';
       }
 
       res.json(data);

@@ -23,6 +23,7 @@ interface UserCardProps {
   onManageAccess: () => void;
   onDelete: () => void;
   onResetPassword: () => void;
+  onDownloadReport?: () => void;
 }
 
 const getInitials = (name: string, email: string) => {
@@ -53,6 +54,7 @@ export const UserCard: React.FC<UserCardProps> = ({
   onManageAccess,
   onDelete,
   onResetPassword,
+  onDownloadReport,
 }) => {
   const percent = usagePercent(user);
   const active = isActiveUser(user);
@@ -125,6 +127,7 @@ export const UserCard: React.FC<UserCardProps> = ({
           onManageAccess={onManageAccess}
           onDelete={onDelete}
           onResetPassword={onResetPassword}
+          onDownloadReport={onDownloadReport}
         />
       </div>
 

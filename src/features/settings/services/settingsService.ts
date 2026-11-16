@@ -6,22 +6,22 @@ const TABLE_NAME = 'settings';
 export const fetchSettings = async (userId: string) => {
   try {
     console.log("Fetching settings for:", userId);
-    // Try with 'user_id' first
     let { data, error } = await supabase
       .from(TABLE_NAME)
       .select('*')
-      .eq('user_id', userId)
+      .eq('id', userId)
       .single();
 
-    // If 'user_id' column doesn't exist, try 'id'
-    if (error && error.message?.includes('user_id')) {
+    if (error && error.code !== 'PGRST116' && error.message?.includes('id')) {
       const fallback = await supabase
         .from(TABLE_NAME)
         .select('*')
-        .eq('id', userId)
+        .eq('user_id', userId)
         .single();
-      data = fallback.data;
-      error = fallback.error;
+      if (!fallback.error || fallback.error.code === 'PGRST116') {
+        data = fallback.data;
+        error = fallback.error;
+      }
     }
 
     if (error && error.code !== 'PGRST116') throw error;
@@ -70,16 +70,16 @@ export const saveSettings = async (userId: string, settings: TelegramSettings) =
       updated_at: new Date().toISOString()
     };
     
-    // Try saving with user_id
+    // Try saving with 'id' first (matches profiles.id)
     let { error } = await supabase
       .from(TABLE_NAME)
-      .upsert({ ...baseData, user_id: userId }, { onConflict: 'user_id' });
+      .upsert({ ...baseData, id: userId }, { onConflict: 'id' });
 
-    // If 'user_id' doesn't exist, fallback to 'id'
-    if (error && error.message?.includes('user_id')) {
+    // If 'id' doesn't exist, fallback to 'user_id'
+    if (error && error.message?.includes('id')) {
       const fallback = await supabase
         .from(TABLE_NAME)
-        .upsert({ ...baseData, id: userId }, { onConflict: 'id' });
+        .upsert({ ...baseData, user_id: userId }, { onConflict: 'user_id' });
       error = fallback.error;
     }
 
