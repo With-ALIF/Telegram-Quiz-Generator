@@ -13,6 +13,7 @@ interface AIQuizInputProps {
   canGenerate: boolean;
   preserveBoardInfo?: boolean;
   setPreserveBoardInfo?: (val: boolean) => void;
+  headerExtra?: React.ReactNode;
 }
 
 export default function AIQuizInput({
@@ -25,34 +26,38 @@ export default function AIQuizInput({
   handleGenerateMore,
   canGenerate,
   preserveBoardInfo = true,
-  setPreserveBoardInfo
+  setPreserveBoardInfo,
+  headerExtra
 }: AIQuizInputProps) {
   return (
     <>
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-        <h2 className="text-2xl font-bold text-slate-900 tracking-tight whitespace-nowrap">Input Text</h2>
-        <div className="flex items-center gap-2 bg-slate-100 border border-slate-200 rounded-full px-4 py-2 w-fit">
-          <Hash className="w-4 h-4 text-slate-500" />
-          <input 
-            type="number"
-            min="1"
-            max="50"
-            value={questionCount || ''} 
-            onChange={(e) => {
-              const val = parseInt(e.target.value);
-              setQuestionCount(isNaN(val) ? 0 : val);
-            }}
-            className="w-10 bg-transparent text-sm font-bold text-slate-900 outline-none text-center p-0 border-none"
-          />
-          <span className="text-xs font-semibold text-slate-600">Questions</span>
+      <div className="flex flex-wrap items-center justify-between gap-2 sm:gap-3 mb-4">
+        <h2 className="text-lg lg:text-xl font-bold text-slate-900 tracking-tight whitespace-nowrap">Input Text</h2>
+        <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-2 bg-slate-100 border border-slate-200 rounded-full px-3 py-1.5">
+            <Hash className="w-4 h-4 text-slate-500" />
+            <input 
+              type="number"
+              min="1"
+              max="50"
+              value={questionCount || ''} 
+              onChange={(e) => {
+                const val = parseInt(e.target.value);
+                setQuestionCount(isNaN(val) ? 0 : val);
+              }}
+              className="w-10 bg-transparent text-sm font-bold text-slate-900 outline-none text-center p-0 border-none"
+            />
+            <span className="text-xs font-semibold text-slate-600">Questions</span>
+          </div>
+          {headerExtra}
         </div>
       </div>
 
-      <div className="mb-4 bg-indigo-50/50 border border-indigo-100 rounded-2xl p-4 flex flex-col gap-3">
+      <div className="mb-3 bg-indigo-50/50 border border-indigo-100 rounded-2xl px-3 py-2.5 flex flex-col gap-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <span className="text-base select-none shrink-0 text-indigo-600">✨</span>
-            <span className="text-xs font-extrabold text-indigo-950 uppercase tracking-wide">বোর্ড ও ভার্সিটি নাম সংরক্ষণ</span>
+            <span className="text-sm select-none shrink-0 text-indigo-600">✨</span>
+            <span className="text-[11px] font-extrabold text-indigo-950 uppercase tracking-wide">বোর্ড ও ভার্সিটি নাম সংরক্ষণ</span>
           </div>
           <button
             type="button"
@@ -79,20 +84,20 @@ export default function AIQuizInput({
           value={inputText}
           onChange={(e) => setInputText(e.target.value)}
           placeholder="Paste your text, notes, or article here..."
-          className="w-full h-72 lg:h-[calc(100vh-380px)] min-h-[280px] p-5 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none resize-none transition-all text-slate-800 leading-relaxed text-sm"
+          className="w-full h-48 lg:h-[calc(100vh-500px)] min-h-[160px] p-3.5 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none resize-none transition-all text-slate-800 leading-relaxed text-sm"
         />
         {inputText && (
-          <div className="mt-2 flex justify-end">
+          <div className="mt-1.5 flex justify-end">
             <ClearButton onClick={() => setInputText('')} />
           </div>
         )}
       </div>
 
-      <div className="flex flex-col gap-3 mt-6">
+      <div className="flex flex-col gap-2 mt-4">
         <button
           onClick={handleGenerate}
           disabled={canGenerate}
-          className="w-full bg-slate-900 hover:bg-slate-800 disabled:bg-slate-300 text-white font-semibold py-3.5 px-6 rounded-2xl flex items-center justify-center gap-2 transition-all duration-200 shadow-sm"
+          className="w-full bg-slate-900 hover:bg-slate-800 disabled:bg-slate-300 text-white font-semibold py-2.5 px-6 rounded-2xl flex items-center justify-center gap-2 transition-all duration-200 shadow-sm"
         >
           {isGenerating ? (
             <>
@@ -109,7 +114,7 @@ export default function AIQuizInput({
         <button
           onClick={handleGenerateMore}
           disabled={canGenerate}
-          className="w-full bg-white border border-slate-200 hover:bg-slate-50 disabled:bg-slate-50 disabled:text-slate-400 text-slate-700 font-semibold py-3.5 px-6 rounded-2xl flex items-center justify-center gap-2 transition-all duration-200"
+          className="w-full bg-white border border-slate-200 hover:bg-slate-50 disabled:bg-slate-50 disabled:text-slate-400 text-slate-700 font-semibold py-2.5 px-6 rounded-2xl flex items-center justify-center gap-2 transition-all duration-200"
         >
           <Wand2 className="w-5 h-5" />
           More

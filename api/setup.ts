@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import TelegramBot from 'node-telegram-bot-api';
 
 export default async function handler(req: any, res: any) {
@@ -8,8 +9,7 @@ export default async function handler(req: any, res: any) {
   const token = (req.query?.token as string) || 
     process.env.TELEGRAM_BOT_TOKEN || 
     process.env.VITE_TELEGRAM_BOT_TOKEN || 
-    process.env.BOT_TOKEN || 
-    "8783681142:AAE-1mDudEvYuT3RTRjg8h6ZzkLcIgKTM1Q";
+    process.env.BOT_TOKEN;
   
   if (!token) {
     return res.status(500).send("❌ Error: TELEGRAM_BOT_TOKEN environment variable is not defined.\n\nTip: You can also pass it in the URL: https://poll.mnr.bd/api/setup?token=YOUR_BOT_TOKEN");

@@ -152,3 +152,25 @@ export const createUserByAdmin = async (email: string, displayName: string, pass
     throw error;
   }
 };
+
+/** Daily counts of created polls (poll_questions.created_at) for the last N days. Returns null on failure. */
+export const fetchDailyPollCounts = async (days: number = 30): Promise<{ date: string; count: number }[] | null> => {
+  try {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const token = sessionData?.session?.access_token;
+
+    const response = await fetch(`/api/admin/poll-daily?days=${days}`, {
+      headers: { 'authorization': token ? `Bearer ${token}` : '' }
+    });
+
+    const resText = await response.text();
+    let resData: any = {};
+    try { resData = resText ? JSON.parse(resText) : {}; } catch (e) {}
+    if (!response.ok) throw new Error(resData.error || 'Failed to load daily poll stats');
+
+    return Array.isArray(resData.days) ? resData.days : null;
+  } catch (error) {
+    console.error("Error in fetchDailyPollCounts:", error);
+    return null;
+  }
+};

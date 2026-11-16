@@ -79,7 +79,7 @@ export const useFeatureRoutes = ({ appState, handleDraftSelected }: FeatureRoute
       <Route 
         path="/drafts" 
         element={
-          <ProtectedRoute permission="drafts">
+          <ProtectedRoute>
             <DraftPage />
           </ProtectedRoute>
         } 
@@ -87,7 +87,7 @@ export const useFeatureRoutes = ({ appState, handleDraftSelected }: FeatureRoute
       <Route 
         path="/polls" 
         element={
-          <ProtectedRoute permission="polls">
+          <ProtectedRoute>
             <div className="max-w-4xl mx-auto">
               <QuizList 
                 questions={sentQuestions}
@@ -118,6 +118,8 @@ export const useFeatureRoutes = ({ appState, handleDraftSelected }: FeatureRoute
                 sentLabel="Total Poll"
                 sentValue={sentQuestions.length}
                 showGeneratedStat={false}
+                countLabel={`${sentQuestions.length} Polls`}
+                countLink="/"
                 hideDelete={true}
               />
             </div>

@@ -10,7 +10,9 @@ interface SendButtonProps {
 }
 
 export default function SendButton({ isSending, sendableCount, allSent, handleSendAll, compact }: SendButtonProps) {
-  const baseClasses = `w-full text-xs lg:text-sm font-bold flex items-center justify-center gap-2 rounded-xl transition-all duration-200 shadow-sm ${compact ? 'py-2 px-3' : 'py-2.5 px-5'}`;
+  const baseClasses = `w-full text-sm font-bold flex items-center justify-center gap-2 rounded-xl transition-all duration-200 ${
+    compact ? 'py-2 px-4' : 'py-2.5 px-5'
+  }`;
 
   if (isSending) {
     return (
@@ -18,7 +20,7 @@ export default function SendButton({ isSending, sendableCount, allSent, handleSe
         disabled
         className={`${baseClasses} text-white bg-blue-600 opacity-90 cursor-not-allowed`}
       >
-        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+        <Loader2 className="w-4 h-4 animate-spin" />
         {compact ? '' : 'Sending...'}
       </button>
     );
@@ -28,9 +30,9 @@ export default function SendButton({ isSending, sendableCount, allSent, handleSe
     return (
       <button
         disabled
-        className={`${baseClasses} text-slate-500 bg-slate-100 border border-slate-200 cursor-not-allowed`}
+        className={`${baseClasses} text-slate-400 bg-slate-100 border border-slate-200 cursor-not-allowed`}
       >
-        <CheckCircle2 className="w-3.5 h-3.5" />
+        <CheckCircle2 className="w-4 h-4" />
         {compact ? 'Done' : 'Nothing to Send'}
       </button>
     );
@@ -39,9 +41,9 @@ export default function SendButton({ isSending, sendableCount, allSent, handleSe
   return (
     <button
       onClick={handleSendAll}
-      className={`${baseClasses} text-white bg-slate-800 hover:bg-slate-900 hover:shadow-md active:scale-95`}
+      className={`${baseClasses} text-white bg-slate-900 hover:bg-slate-800 shadow-md hover:shadow-lg active:scale-[0.99]`}
     >
-      <Send className="w-3.5 h-3.5" />
+      <Send className="w-4 h-4" />
       {compact ? (allSent ? 'Resend' : 'Send All') : (allSent ? `Resend All (${sendableCount})` : `Send All (${sendableCount})`)}
     </button>
   );

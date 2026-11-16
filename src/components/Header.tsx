@@ -41,14 +41,14 @@ export default function Header() {
           </button>
           
           <div className="hidden md:flex items-center gap-4">
-            {user && (
+            {user && !isAdmin && (
               <NavLink to="/settings" className={({ isActive }) => `transition-colors ${isActive ? 'text-blue-600' : 'text-slate-500 hover:text-slate-900'}`} title="Settings">
                 <Settings className="w-6 h-6" />
               </NavLink>
             )}
             {user ? (
               <div className="flex items-center gap-4">
-                <NavLink to="/profile" className="w-10 h-10 rounded-full overflow-hidden border-2 border-blue-100 hover:ring-2 ring-blue-400 transition-all flex items-center justify-center bg-blue-50">
+                <NavLink to={isAdmin ? "/system-stats" : "/profile"} className="w-10 h-10 rounded-full overflow-hidden border-2 border-blue-100 hover:ring-2 ring-blue-400 transition-all flex items-center justify-center bg-blue-50">
                   {profilePhoto ? (
                     <img 
                       src={profilePhoto} 

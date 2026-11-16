@@ -40,7 +40,7 @@ export default function QuizListItems({
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.95 }}
-          className="p-4 sm:p-6 rounded-2xl sm:rounded-3xl border border-slate-200 relative group"
+          className="relative group px-4 py-3 sm:px-5 bg-white hover:bg-slate-50/70 transition-colors"
         >
           {editingQuestionId === q.id && editingQuestion ? (
             <QuizCardEdit 

@@ -43,6 +43,7 @@ export default function AuthForm({
           className="w-full pl-10 pr-10 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
+          minLength={6}
           required
         />
         <button

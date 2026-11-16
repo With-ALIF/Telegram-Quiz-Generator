@@ -9,7 +9,7 @@ interface QuizCardActionsProps {
 
 export default function QuizCardActions({ question, handleSendToTelegram }: QuizCardActionsProps) {
   return (
-    <div className="flex items-center justify-end border-t border-slate-100 pt-5 mt-2">
+    <div className="flex items-center justify-end border-t border-slate-100 pt-3 mt-1">
       {question.status === 'sent' ? (
         <div className="flex items-center gap-3">
           <span className="flex items-center gap-1.5 text-green-600 text-sm font-semibold bg-green-50 px-5 py-2.5 rounded-xl">

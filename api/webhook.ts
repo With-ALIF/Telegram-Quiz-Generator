@@ -1,7 +1,18 @@
+import 'dotenv/config';
 import TelegramBot from 'node-telegram-bot-api';
 
-const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || process.env.VITE_TELEGRAM_BOT_TOKEN || "8783681142:AAE-1mDudEvYuT3RTRjg8h6ZzkLcIgKTM1Q";
-const bot = BOT_TOKEN ? new TelegramBot(BOT_TOKEN) : null;
+let cachedBot: TelegramBot | null = null;
+let lastUsedToken: string | null = null;
+
+function getBot(): TelegramBot | null {
+  const token = process.env.TELEGRAM_BOT_TOKEN || process.env.VITE_TELEGRAM_BOT_TOKEN || process.env.BOT_TOKEN;
+  if (!token) return null;
+  if (!cachedBot || lastUsedToken !== token) {
+    cachedBot = new TelegramBot(token);
+    lastUsedToken = token;
+  }
+  return cachedBot;
+}
 
 const welcomeMessage = (chatId: string) => `*TeleQuiz AI Platform*
 _Smart & Instant Telegram Quiz Generator_
@@ -35,6 +46,7 @@ const defaultKeyboard = {
 
 export default async function handler(req: any, res: any) {
   if (req.method === 'POST') {
+    const bot = getBot();
     if (!bot) {
       console.error("TELEGRAM_BOT_TOKEN environment variable is missing.");
       return res.status(500).send("TELEGRAM_BOT_TOKEN is missing");

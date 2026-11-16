@@ -71,7 +71,7 @@ export default function QuizCard({
         )}
       </div>
       
-      <div className="flex items-start gap-3 pr-20 mb-5">
+      <div className="flex items-start gap-3 pr-20 mb-3">
         <div className="pt-1">
           <input 
             type="checkbox" 
@@ -82,17 +82,17 @@ export default function QuizCard({
         </div>
         <div className="flex-1">
           {question.topic ? (
-            <span className="inline-block bg-indigo-50 text-indigo-600 text-xs font-semibold px-2.5 py-1 rounded-md mb-2 border border-indigo-100">
+            <span className="inline-block bg-indigo-50 text-indigo-600 text-xs font-semibold px-2.5 py-1 rounded-md mb-1.5 border border-indigo-100">
               {question.topic}
             </span>
           ) : (
-            <span className="inline-block bg-red-50 text-red-600 text-xs font-semibold px-2.5 py-1 rounded-md mb-2 border border-red-100 animate-pulse">
+            <span className="inline-block bg-red-50 text-red-600 text-xs font-semibold px-2.5 py-1 rounded-md mb-1.5 border border-red-100 animate-pulse">
               Missing Topic
             </span>
           )}
-          <h3 className="font-semibold text-lg text-slate-800 leading-snug mb-3">{question.question}</h3>
+          <h3 className="font-semibold text-lg text-slate-800 leading-snug mb-2">{question.question}</h3>
           {question.image && (
-            <div className="mb-4">
+            <div className="mb-3">
               <img 
                 src={question.image} 
                 alt="Poll visual" 
@@ -103,11 +103,11 @@ export default function QuizCard({
         </div>
       </div>
       
-      <div className="space-y-2.5 mb-5">
+      <div className="space-y-2 mb-3">
         {question.options.map((opt, idx) => (
           <div 
             key={idx}
-            className={`p-3.5 rounded-2xl text-sm border transition-colors ${
+            className={`p-3 rounded-2xl text-sm border transition-colors ${
               idx === question.correctOptionIndex 
                 ? 'bg-green-50/50 border-green-200 text-green-800 font-medium' 
                 : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
@@ -121,7 +121,7 @@ export default function QuizCard({
         ))}
       </div>
       
-      <div className="bg-indigo-50/50 border border-indigo-100/50 text-indigo-900 p-4 rounded-2xl text-sm mb-5 leading-relaxed">
+      <div className="bg-indigo-50/50 border border-indigo-100/50 text-indigo-900 p-3 rounded-2xl text-sm mb-3 leading-relaxed">
         <strong className="text-indigo-700">Explanation:</strong> {question.explanation}
       </div>
 

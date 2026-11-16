@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { Home, FileText, CheckSquare, Layout, Info, Shield, BarChart3, Settings, Camera, Zap } from 'lucide-react';
+import { Home, FileText, CheckSquare, Shield, BarChart3, Settings, Camera, Zap } from 'lucide-react';
 import { useAuth } from '../features/auth/hooks/useAuth';
 
 export default function DesktopNav({ user }: { user: any }) {
@@ -22,10 +22,6 @@ export default function DesktopNav({ user }: { user: any }) {
           <NavLink to="/admin" className={linkClass}>
             <Shield className="w-4 h-4" />
             Users Panel
-          </NavLink>
-          <NavLink to="/admin/features" className={linkClass}>
-            <Layout className="w-4 h-4" />
-            Features
           </NavLink>
           <NavLink to="/admin/suffix" className={linkClass}>
             <Settings className="w-4 h-4" />
@@ -52,13 +48,13 @@ export default function DesktopNav({ user }: { user: any }) {
         </NavLink>
       )}
 
-      {user && !isAdmin && hasPermission('drafts') && (
+      {user && !isAdmin && (
         <NavLink to="/drafts" className={linkClass}>
           <FileText className="w-4 h-4" />
           Drafts
         </NavLink>
       )}
-      {user && !isAdmin && hasPermission('polls') && (
+      {user && !isAdmin && (
         <NavLink to="/polls" className={linkClass}>
           <CheckSquare className="w-4 h-4" />
           Polls
@@ -71,12 +67,6 @@ export default function DesktopNav({ user }: { user: any }) {
         </NavLink>
       )}
       
-      {!isAdmin && (
-        <NavLink to="/about" className={linkClass}>
-          <Info className="w-4 h-4" />
-          About
-        </NavLink>
-      )}
       {user && !isAdmin && (
         <NavLink to="/settings" className={linkClass}>
           <Settings className="w-4 h-4" />

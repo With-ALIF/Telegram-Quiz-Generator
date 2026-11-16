@@ -3,6 +3,7 @@ import { AlertCircle, X } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import QuizListHeader from './QuizListHeader';
 import QuizListToolbar from './QuizListToolbar';
+import SendButton from './SendButton';
 import QuizEmptyState from '../core/QuizEmptyState';
 import QuizListItems from './QuizListItems';
 import QuizExportSection from '../export/QuizExportSection';
@@ -32,6 +33,8 @@ export default function QuizList({
   sentLabel,
   sentValue,
   showGeneratedStat,
+  countLabel,
+  countLink,
   sendError,
   onClearError,
   isBulkSending,
@@ -46,15 +49,19 @@ export default function QuizList({
   className = ""
 }: QuizListProps) {
   const { selectedTopic, setSelectedTopic, filteredQuestions } = useQuizFilter(questions);
-  const { 
-    selectedIds, 
-    handleSelectAll, 
-    toggleSelection, 
-    clearSelection, 
-    isAllSelected, 
-    selectedCount 
+  const {
+    selectedIds,
+    handleSelectAll,
+    toggleSelection,
+    clearSelection,
+    isAllSelected,
+    selectedCount
   } = useQuizSelection(questions, filteredQuestions);
   const { exportQuestions } = useQuizExport(filteredQuestions, selectedIds);
+
+  const sendableCount = (questions || []).filter(q => q.status !== 'sending').length;
+  const isSending = (questions || []).some(q => q.status === 'sending');
+  const allSent = (questions || []).length > 0 && (questions || []).every(q => q.status === 'sent');
 
   const handleDeleteSelected = () => {
     removeQuestions(selectedIds);
@@ -78,39 +85,28 @@ export default function QuizList({
   };
 
   const handleSetBulkTopic = (topic: string) => {
-    setQuestions(prev => prev.map(q => 
+    setQuestions(prev => prev.map(q =>
       selectedIds.includes(q.id) ? { ...q, topic } : q
     ));
     clearSelection();
   };
 
   return (
-    <div className={`space-y-4 ${className}`}>
-      <QuizListHeader 
-        totalQuestions={questions.length} 
+    <div className={`space-y-3 ${className}`}>
+      <QuizListHeader
+        totalQuestions={questions.length}
         stats={stats}
         title={title}
         sentLabel={sentLabel}
         sentValue={sentValue}
         showGeneratedStat={showGeneratedStat}
-      >
-        <QuizListToolbar 
-          questions={questions}
-          settings={settings}
-          onChannelChange={onChannelChange}
-          handleSendAll={handleSendAll}
-          selectedTopic={selectedTopic}
-          onTopicChange={setSelectedTopic}
-          canEditSuffix={canEditSuffix}
-          globalDefaultSuffix={globalDefaultSuffix}
-          delaySeconds={delaySeconds}
-          setDelaySeconds={setDelaySeconds}
-        />
-      </QuizListHeader>
+        countLabel={countLabel}
+        countLink={countLink}
+      />
 
       <AnimatePresence>
         {isBulkSending && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
@@ -128,15 +124,15 @@ export default function QuizList({
                   {bulkSendStatus || "পোল পাঠানো হচ্ছে..."}
                 </h4>
                 <p className="text-xs text-indigo-700 mt-0.5 leading-relaxed">
-                  {bulkSendStatus 
-                    ? "টেলিগ্রামের লিমিট এড়াতে প্রতি ২০টি পোল পাঠানোর পর ৪০ সেকেন্ড বিরতি নেওয়া হয়।" 
+                  {bulkSendStatus
+                    ? "টেলিগ্রামের লিমিট এড়াতে প্রতি ২০টি পোল পাঠানোর পর ৪০ সেকেন্ড বিরতি নেওয়া হয়।"
                     : "সবগুলো পোল একে একে টেলিগ্রামে পাঠানো হচ্ছে। অনুগ্রহ করে অপেক্ষা করুন।"
                   }
                 </p>
               </div>
             </div>
             {handleStopSend && (
-              <button 
+              <button
                 onClick={handleStopSend}
                 disabled={isStopping}
                 className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition-all disabled:opacity-50 cursor-pointer flex items-center justify-center gap-1.5 shrink-0 self-end sm:self-auto"
@@ -158,7 +154,7 @@ export default function QuizList({
         )}
 
         {sendError && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
@@ -172,7 +168,7 @@ export default function QuizList({
               <p className="text-xs text-red-700 mt-0.5 leading-relaxed break-words">{sendError}</p>
             </div>
             {onClearError && (
-              <button 
+              <button
                 onClick={onClearError}
                 className="p-1 hover:bg-red-100 rounded-lg text-red-400 hover:text-red-600 transition-all"
               >
@@ -183,42 +179,65 @@ export default function QuizList({
         )}
       </AnimatePresence>
 
-      <QuizExportSection 
-        questions={exportQuestions} 
-        selectedCount={selectedCount}
-        onSendToTelegram={() => onSendSelected()}
+      <QuizListToolbar
+        settings={settings}
+        onChannelChange={onChannelChange}
+        selectedTopic={selectedTopic}
+        onTopicChange={setSelectedTopic}
+        canEditSuffix={canEditSuffix}
+        globalDefaultSuffix={globalDefaultSuffix}
+        delaySeconds={delaySeconds}
+        setDelaySeconds={setDelaySeconds}
       />
 
-      <QuizBulkSection 
-        filteredQuestions={filteredQuestions}
-        selectedIds={selectedIds}
-        isAllSelected={isAllSelected}
-        handleSelectAll={handleSelectAll}
-        onSendSelected={onSendSelected}
-        onDraftSelected={handleDraftSelected}
-        handleDeleteSelected={handleDeleteSelected}
-        onSetTopic={handleSetBulkTopic}
-        hideDelete={hideDelete}
+      <SendButton
+        isSending={isSending}
+        sendableCount={sendableCount}
+        allSent={allSent}
+        handleSendAll={handleSendAll}
       />
 
-      <div className="space-y-4">
+      <QuizExportSection questions={exportQuestions} />
+
+      <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+        <div className="flex items-center justify-between gap-3 px-4 py-2.5 border-b border-slate-100">
+          <h3 className="text-sm font-black text-slate-800">Quiz List</h3>
+          <span className="text-xs font-bold text-slate-400">{filteredQuestions.length} items</span>
+        </div>
+
+        <QuizBulkSection
+          filteredQuestions={filteredQuestions}
+          selectedIds={selectedIds}
+          isAllSelected={isAllSelected}
+          handleSelectAll={handleSelectAll}
+          onSendSelected={onSendSelected}
+          onDraftSelected={handleDraftSelected}
+          handleDeleteSelected={handleDeleteSelected}
+          onSetTopic={handleSetBulkTopic}
+          hideDelete={hideDelete}
+        />
+
         <AnimatePresence>
           {filteredQuestions.length === 0 ? (
-            <QuizEmptyState />
+            <div className="p-3">
+              <QuizEmptyState />
+            </div>
           ) : (
-            <QuizListItems 
-              questions={filteredQuestions}
-              setQuestions={setQuestions}
-              selectedIds={selectedIds}
-              toggleSelection={toggleSelection}
-              removeQuestion={removeQuestion}
-              handleSendToTelegram={handleSendToTelegram}
-              editingQuestionId={editingQuestionId}
-              setEditingQuestionId={setEditingQuestionId}
-              editingQuestion={editingQuestion}
-              setEditingQuestion={setEditingQuestion}
-              hideDelete={hideDelete}
-            />
+            <div className="divide-y divide-slate-100">
+              <QuizListItems
+                questions={filteredQuestions}
+                setQuestions={setQuestions}
+                selectedIds={selectedIds}
+                toggleSelection={toggleSelection}
+                removeQuestion={removeQuestion}
+                handleSendToTelegram={handleSendToTelegram}
+                editingQuestionId={editingQuestionId}
+                setEditingQuestionId={setEditingQuestionId}
+                editingQuestion={editingQuestion}
+                setEditingQuestion={setEditingQuestion}
+                hideDelete={hideDelete}
+              />
+            </div>
           )}
         </AnimatePresence>
       </div>

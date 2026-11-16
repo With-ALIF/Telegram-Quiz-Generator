@@ -1,9 +1,12 @@
-import React, { useEffect } from 'react';
-import { motion } from 'motion/react';
-import { Users, Layout, Shield, FileQuestion } from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Users, Layout, FileQuestion, Send, Shield, UserPlus } from 'lucide-react';
 import { useAdminUsers } from '../hooks/useAdminUsers';
 import { AVAILABLE_PAGES } from '../constants';
 import { supabase } from '../../../lib/supabase';
+import { isRegularUser, timeAgo } from '../utils/adminUtils';
+import StatCard from '../components/stats/StatCard';
+import RecentActivity, { ActivityEvent } from '../components/stats/RecentActivity';
+import DailyPollsChart from '../components/stats/DailyPollsChart';
 
 export default function AdminStats() {
   const { loading, regularUsersCount, users } = useAdminUsers();
@@ -11,6 +14,17 @@ export default function AdminStats() {
 
   const totalPollsGenerated = users.reduce((sum, user) => sum + (user.stats?.generated || 0), 0);
   const totalPollsSent = users.reduce((sum, user) => sum + (user.stats?.sent || 0), 0);
+
+  const [syncedAt, setSyncedAt] = useState<number>(Date.now() / 1000);
+
+  // Regular members (excluding admins) for growth charts & activity
+  const members = useMemo(() => users.filter(isRegularUser), [users]);
+
+  // Members joined in the last 30 days
+  const newThisMonth = useMemo(() => {
+    const cutoff = Date.now() / 1000 - 30 * 24 * 3600;
+    return members.filter(u => (u.createdAt?.seconds || 0) >= cutoff).length;
+  }, [members]);
 
   // Sync user count and poll count to global stats
   useEffect(() => {
@@ -26,6 +40,7 @@ export default function AdminStats() {
               total_polls_sent: totalPollsSent,
               updated_at: new Date().toISOString()
             });
+          setSyncedAt(Date.now() / 1000);
         } catch (error) {
           console.error("Failed to sync stats", error);
         }
@@ -34,6 +49,42 @@ export default function AdminStats() {
     }
   }, [loading, regularUsersCount, totalPollsGenerated, totalPollsSent]);
 
+  // Recent activity: newest signups first, then all-time stat events
+  const events: ActivityEvent[] = useMemo(() => {
+    const signups: ActivityEvent[] = [...members]
+      .sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0))
+      .slice(0, 2)
+      .map(u => ({
+        icon: UserPlus,
+        iconBg: '#edf4ff',
+        iconColor: '#2563eb',
+        title: 'New member registered',
+        subtitle: u.displayName || u.email || 'Anonymous',
+        time: timeAgo(u.createdAt?.seconds),
+      }));
+
+    const stats: ActivityEvent[] = [
+      {
+        icon: Send,
+        iconBg: '#fff7e8',
+        iconColor: '#d97706',
+        title: 'Messages sent',
+        subtitle: `${totalPollsSent.toLocaleString()} all-time messages sent`,
+        time: timeAgo(syncedAt),
+      },
+      {
+        icon: Users,
+        iconBg: '#f0efff',
+        iconColor: '#6547ff',
+        title: 'Total members',
+        subtitle: `${regularUsersCount} registered members`,
+        time: timeAgo(syncedAt),
+      },
+    ];
+
+    return [...signups, ...stats].slice(0, 3);
+  }, [members, totalPollsGenerated, totalPollsSent, regularUsersCount, syncedAt]);
+
   if (loading) return (
     <div className="flex items-center justify-center min-h-[60vh]">
       <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600" />
@@ -41,68 +92,69 @@ export default function AdminStats() {
   );
 
   return (
-    <div className="max-w-4xl mx-auto px-4 pt-2 pb-8">
-      <div className="mb-8 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-indigo-100 rounded-lg">
-            <Shield className="w-6 h-6 text-indigo-600" />
+    <div className="min-h-full bg-[#f7f9fc] px-4 md:px-8 py-7">
+      {/* Overview header */}
+      <div className="flex items-start justify-between gap-4 flex-wrap mb-7">
+        <div className="flex items-center gap-4">
+          <div className="w-11 h-11 rounded-[13px] bg-[#e9edff] flex items-center justify-center shrink-0">
+            <Shield className="w-6 h-6 text-[#5546ff]" strokeWidth={2.2} />
           </div>
-          <h1 className="text-2xl font-bold text-slate-900">Overview</h1>
+          <div>
+            <h1 className="text-[27px] font-extrabold text-[#0f172a] leading-tight">Overview</h1>
+            <p className="text-[13px] text-[#64748b]">Platform performance at a glance</p>
+          </div>
+        </div>
+
+        <div className="inline-flex items-center gap-2 bg-[#eaf8f0] rounded-full px-4 py-1.5 mt-1">
+          <span className="w-2 h-2 rounded-full bg-[#16a36a] animate-pulse" />
+          <span className="text-[11px] font-bold text-[#16804f] tracking-wide">LIVE STATS</span>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-white p-5 md:p-6 rounded-3xl shadow-sm border border-slate-100 flex flex-col items-center text-center group hover:border-blue-200 transition-all"
-        >
-          <div className="p-3 md:p-4 bg-blue-50 rounded-2xl mb-3 md:mb-4 group-hover:scale-110 transition-transform">
-            <Users className="w-6 h-6 md:w-8 md:h-8 text-blue-600" />
-          </div>
-          <div className="text-3xl md:text-4xl font-black text-slate-900 mb-1">{regularUsersCount}</div>
-          <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Total Members</div>
-        </motion.div>
-
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="bg-white p-5 md:p-6 rounded-3xl shadow-sm border border-slate-100 flex flex-col items-center text-center group hover:border-indigo-200 transition-all"
-        >
-          <div className="p-3 md:p-4 bg-indigo-50 rounded-2xl mb-3 md:mb-4 group-hover:scale-110 transition-transform">
-            <Layout className="w-6 h-6 md:w-8 md:h-8 text-indigo-600" />
-          </div>
-          <div className="text-3xl md:text-4xl font-black text-slate-900 mb-1">{featuresCount}</div>
-          <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Total Features</div>
-        </motion.div>
-
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="bg-white p-5 md:p-6 rounded-3xl shadow-sm border border-slate-100 flex flex-col items-center text-center group hover:border-emerald-200 transition-all"
-        >
-          <div className="p-3 md:p-4 bg-emerald-50 rounded-2xl mb-3 md:mb-4 group-hover:scale-110 transition-transform">
-            <FileQuestion className="w-6 h-6 md:w-8 md:h-8 text-emerald-600" />
-          </div>
-          <div className="text-3xl md:text-4xl font-black text-slate-900 mb-1">{totalPollsGenerated}</div>
-          <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Polls Generated</div>
-        </motion.div>
-
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="bg-white p-5 md:p-6 rounded-3xl shadow-sm border border-slate-100 flex flex-col items-center text-center group hover:border-amber-200 transition-all"
-        >
-          <div className="p-3 md:p-4 bg-amber-50 rounded-2xl mb-3 md:mb-4 group-hover:scale-110 transition-transform">
-            <Shield className="w-6 h-6 md:w-8 md:h-8 text-amber-600" />
-          </div>
-          <div className="text-3xl md:text-4xl font-black text-slate-900 mb-1">{totalPollsSent}</div>
-          <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Total Sent</div>
-        </motion.div>
+      {/* Stat cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5 mb-6">
+        <StatCard
+          icon={Users}
+          iconBg="#edf4ff"
+          iconColor="#2563eb"
+          value={regularUsersCount}
+          label="Total Members"
+          badge={`+${newThisMonth} THIS MONTH`}
+        />
+        <StatCard
+          icon={Layout}
+          iconBg="#f0efff"
+          iconColor="#6547ff"
+          value={featuresCount}
+          label="Total Features"
+          note="Available platform features"
+          delay={0.08}
+        />
+        <StatCard
+          icon={FileQuestion}
+          iconBg="#eafaf3"
+          iconColor="#059669"
+          value={totalPollsGenerated.toLocaleString()}
+          label="Polls Generated"
+          note="All-time generated polls"
+          delay={0.16}
+        />
+        <StatCard
+          icon={Send}
+          iconBg="#fff7e8"
+          iconColor="#d97706"
+          value={totalPollsSent.toLocaleString()}
+          label="Total Sent"
+          note="All-time messages sent"
+          delay={0.24}
+        />
       </div>
+
+      {/* Daily polls chart (real data from poll_questions.created_at) */}
+      <DailyPollsChart />
+
+      {/* Activity panel */}
+      <RecentActivity events={events} />
     </div>
   );
 }

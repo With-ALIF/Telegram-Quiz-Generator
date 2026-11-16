@@ -4,7 +4,6 @@ import ProtectedRoute from '../../components/ProtectedRoute';
 
 const AdminDashboard = lazy(() => import('../../features/admin/pages/AdminDashboard'));
 const AdminStats = lazy(() => import('../../features/admin/pages/AdminStats'));
-const FeatureDirectory = lazy(() => import('../../features/admin/pages/FeatureDirectory'));
 const AdminSuffixSettings = lazy(() => import('../../features/admin/pages/AdminSuffixSettings'));
 
 interface AdminRoutesProps {
@@ -19,14 +18,6 @@ export const useAdminRoutes = ({ isAdmin }: AdminRoutesProps) => {
         element={
           <ProtectedRoute>
             {isAdmin ? <AdminStats /> : <div className="p-8 text-center">Access Denied</div>}
-          </ProtectedRoute>
-        } 
-      />
-      <Route 
-        path="/admin/features" 
-        element={
-          <ProtectedRoute>
-            {isAdmin ? <FeatureDirectory /> : <div className="p-8 text-center">Access Denied</div>}
           </ProtectedRoute>
         } 
       />

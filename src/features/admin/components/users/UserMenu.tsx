@@ -11,50 +11,75 @@ interface UserMenuProps {
   onResetPassword: () => void;
 }
 
-export const UserMenu: React.FC<UserMenuProps> = ({ 
-  userId, activeMenuId, setActiveMenuId, onManageAccess, onDelete, onResetPassword
+export const UserMenu: React.FC<UserMenuProps> = ({
+  userId,
+  activeMenuId,
+  setActiveMenuId,
+  onManageAccess,
+  onDelete,
+  onResetPassword,
 }) => {
   const isOpen = activeMenuId === userId;
 
   return (
-    <div className="relative">
-      <button 
+    <div className="relative shrink-0">
+      <button
+        type="button"
         onClick={() => setActiveMenuId(isOpen ? null : userId)}
-        className="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-400"
+        aria-label="User actions"
+        aria-haspopup="menu"
+        aria-expanded={isOpen}
+        className="rounded-full p-2 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
       >
-        <MoreVertical className="w-5 h-5" />
+        <MoreVertical className="h-5 w-5" aria-hidden="true" />
       </button>
-      
+
       <AnimatePresence>
         {isOpen && (
           <>
-            <div className="fixed inset-0 z-10" onClick={() => setActiveMenuId(null)} />
-            <motion.div 
+            <div className="fixed inset-0 z-10" onClick={() => setActiveMenuId(null)} aria-hidden="true" />
+            <motion.div
+              role="menu"
               initial={{ opacity: 0, scale: 0.95, y: -10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: -10 }}
-              className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-xl border border-slate-100 z-20 py-1 overflow-hidden"
+              className="absolute right-0 z-20 mt-2 w-48 overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-lg"
             >
-              <button 
-                onClick={() => { onManageAccess(); setActiveMenuId(null); }}
-                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 transition-colors"
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  onManageAccess();
+                  setActiveMenuId(null);
+                }}
+                className="flex w-full items-center gap-3 px-4 py-2.5 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
               >
-                <Lock className="w-4 h-4 text-amber-500" />
+                <Lock className="h-4 w-4 text-amber-500" aria-hidden="true" />
                 Manage Access
               </button>
-              <button 
-                onClick={() => { onResetPassword(); setActiveMenuId(null); }}
-                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 transition-colors"
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  onResetPassword();
+                  setActiveMenuId(null);
+                }}
+                className="flex w-full items-center gap-3 px-4 py-2.5 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
               >
-                <KeyRound className="w-4 h-4 text-indigo-500" />
+                <KeyRound className="h-4 w-4 text-indigo-500" aria-hidden="true" />
                 Reset Password
               </button>
-              <div className="h-px bg-slate-100 my-1" />
-              <button 
-                onClick={() => { onDelete(); setActiveMenuId(null); }}
-                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors"
+              <div className="my-1 h-px bg-slate-100" />
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  onDelete();
+                  setActiveMenuId(null);
+                }}
+                className="flex w-full items-center gap-3 px-4 py-2.5 text-sm font-medium text-red-600 transition-colors hover:bg-red-50"
               >
-                <Trash2 className="w-4 h-4" />
+                <Trash2 className="h-4 w-4" aria-hidden="true" />
                 Delete User
               </button>
             </motion.div>

@@ -14,4 +14,4 @@ export const QUIZ_TOPICS = [
   "Others"
 ];
 
-export const FIXED_BOT_TOKEN = "";
+export const FIXED_BOT_TOKEN = (import.meta.env?.VITE_TELEGRAM_BOT_TOKEN as string) || "";

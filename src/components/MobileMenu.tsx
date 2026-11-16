@@ -5,8 +5,6 @@ import {
   Home, 
   FileText, 
   CheckSquare, 
-  Layout, 
-  Info, 
   Settings, 
   LogOut, 
   LogIn,
@@ -68,10 +66,6 @@ export default function MobileMenu({ user, profilePhoto, displayName, logout, to
               <Shield className="w-5 h-5" />
               User Panel
             </NavLink>
-            <NavLink to="/admin/features" onClick={toggleMenu} className={linkClass}>
-              <Layout className="w-5 h-5" />
-              Feature  
-            </NavLink>
             <NavLink to="/admin/suffix" onClick={toggleMenu} className={linkClass}>
               <Settings className="w-5 h-5" />
               Suffix Settings
@@ -93,14 +87,14 @@ export default function MobileMenu({ user, profilePhoto, displayName, logout, to
           </NavLink>
         )}
         
-        {user && !isAdmin && hasPermission('drafts') && (
+        {user && !isAdmin && (
           <NavLink to="/drafts" onClick={toggleMenu} className={linkClass}>
             <FileText className="w-5 h-5" />
             Drafts
           </NavLink>
         )}
         
-        {user && !isAdmin && hasPermission('polls') && (
+        {user && !isAdmin && (
           <NavLink to="/polls" onClick={toggleMenu} className={linkClass}>
             <CheckSquare className="w-5 h-5" />
             Polls
@@ -114,21 +108,14 @@ export default function MobileMenu({ user, profilePhoto, displayName, logout, to
           </NavLink>
         )}
         
-        {!isAdmin && (
-          <NavLink to="/about" onClick={toggleMenu} className={linkClass}>
-            <Info className="w-5 h-5" />
-            About
-          </NavLink>
-        )}
-        
-        {user && (
+        {user && !isAdmin && (
           <NavLink to="/profile" onClick={toggleMenu} className={linkClass}>
             <User className="w-5 h-5" />
             Profile
           </NavLink>
         )}
         
-        {user && (
+        {user && !isAdmin && (
           <NavLink to="/settings" onClick={toggleMenu} className={linkClass}>
             <Settings className="w-5 h-5" />
             Settings

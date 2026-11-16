@@ -8,6 +8,7 @@ import ProfileHeader from '../components/ProfileHeader';
 import ProfileAvatar from '../components/ProfileAvatar';
 import ProfileInfo from '../components/ProfileInfo';
 import ProfileForm from '../components/ProfileForm';
+import ProfileAccessInfo from '../components/ProfileAccessInfo';
 
 export default function ProfilePage() {
   const { user, loading: authLoading, logout, isAdmin } = useAuth();
@@ -56,8 +57,13 @@ export default function ProfilePage() {
           .eq('user_id', user.id)
           .maybeSingle();
 
-        if (photoData) {
+        if (photoData && photoData.photo_url) {
           setPhotoURL(normalizeGithubUrl(photoData.photo_url || ''));
+        } else {
+          const googlePhoto = user.photoURL || user.user_metadata?.avatar_url || user.user_metadata?.picture || '';
+          if (googlePhoto) {
+            setPhotoURL(normalizeGithubUrl(googlePhoto));
+          }
         }
       };
       fetchProfile();
@@ -144,6 +150,13 @@ export default function ProfilePage() {
           loading={loading}
           onSave={handleSave}
         />
+
+        {!isAdmin && (
+          <ProfileAccessInfo
+            email={user.email || ''}
+            displayName={displayName}
+          />
+        )}
 
         <div className="pt-4">
           <button

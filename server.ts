@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import express from "express";
 import { createServer as createViteServer } from "vite";
 import path from "path";
@@ -9,31 +10,13 @@ import quizHandler from "./api/quiz.ts";
 
 dotenv.config({ override: true });
 
-const DEFAULT_URL = 'https://cvmmpnpvstrwgfmhfplw.supabase.co';
-const DEFAULT_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN2bW1wbnB2c3Ryd2dmbWhmcGx3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE3NzI3MDQsImV4cCI6MjA5NzM0ODcwNH0.v0almOw_atds8v44EXDiwnAMPE9EhHg8WE4YltTDbzM';
-const DEFAULT_SERVICE_ROLE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN2bW1wbnB2c3Ryd2dmbWhmcGx3Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4MTc3MjcwNCwiZXhwIjoyMDk3MzQ4NzA0fQ.Xm_9NZ2Y6-pVNODfQ-yA6ftpcscqbZg1FlKvuwlFkjQ';
-
-let envSupaUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || '';
-if (!envSupaUrl || envSupaUrl.includes('ais-dev') || envSupaUrl.includes('ais-pre') || envSupaUrl.includes('guwimglpjxstczuocary') || !envSupaUrl.includes('.supabase.co')) {
-  envSupaUrl = DEFAULT_URL;
-}
-const SUPABASE_URL = envSupaUrl;
-
-let envSupaAnonKey = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || '';
-if (!envSupaAnonKey || envSupaAnonKey.includes('VITE_SUPABASE_ANON_KEY') || envSupaAnonKey.includes('guwimglpjxstczuocary')) {
-  envSupaAnonKey = DEFAULT_ANON_KEY;
-}
-const SUPABASE_ANON_KEY = envSupaAnonKey;
-
-let envSupaRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || DEFAULT_SERVICE_ROLE_KEY;
-if (!envSupaRoleKey || envSupaRoleKey.includes('guwimglpjxstczuocary') || envSupaRoleKey === 'undefined' || envSupaRoleKey === envSupaAnonKey) {
-  envSupaRoleKey = DEFAULT_SERVICE_ROLE_KEY;
-}
-const SUPABASE_SERVICE_ROLE_KEY = envSupaRoleKey;
+const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || '';
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY || '';
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 
 async function initSupabaseAdmin() {
   if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-    console.warn("⚠️ [WARNING] Supabase URL or Service Role Key is missing in environment variables. The server will run, but admin user creation and verification will be unavailable. Please add them to your Secrets in Settings.");
+    console.warn("⚠️ [WARNING] Supabase URL or Service Role Key is missing in environment variables. The server will run, but admin user creation and verification will be unavailable. Please add them to your .env file.");
     return;
   }
 
@@ -46,7 +29,7 @@ async function initSupabaseAdmin() {
     });
 
     // Test connection first
-    const { data: userData, error: listError } = await supabaseAdmin.auth.admin.listUsers();
+    const { error: listError } = await supabaseAdmin.auth.admin.listUsers({ page: 0, perPage: 1 });
     
     if (listError) {
       if (listError.message?.includes('getaddrinfo') || listError.message?.includes('fetch failed')) {
@@ -57,46 +40,7 @@ async function initSupabaseAdmin() {
       return;
     }
 
-    const users = userData.users || [];
-    const adminsToCreate = [
-      { email: "alifweb@gmail.com", pass: "12305016", name: "Super Admin" },
-      { email: "alifbrur16@gmail.com", pass: "12305016", name: "Admin Alif" }
-    ];
-
-    for (const admin of adminsToCreate) {
-      const existing = users.find(u => u.email?.toLowerCase() === admin.email.toLowerCase());
-      if (!existing) {
-        console.log(`🆕 Admin user ${admin.email} not found, creating...`);
-        const { data: userData, error: createError } = await supabaseAdmin.auth.admin.createUser({
-          email: admin.email,
-          password: admin.pass,
-          email_confirm: true,
-          user_metadata: { role: 'admin', full_name: admin.name }
-        });
-
-        if (createError) {
-          console.error(`❌ Error creating admin user ${admin.email}:`, createError.message);
-        } else if (userData.user) {
-          console.log(`✅ Admin user ${admin.email} created successfully:`, userData.user.id);
-          // Also create profile
-          await supabaseAdmin.from('profiles').upsert({
-            id: userData.user.id,
-            email: admin.email,
-            display_name: admin.name,
-            role: 'admin'
-          });
-        }
-      } else {
-        console.log(`✅ Admin user ${admin.email} already exists with ID:`, existing.id);
-        // Ensure profile exists for existing admin
-        await supabaseAdmin.from('profiles').upsert({
-          id: existing.id,
-          email: admin.email,
-          display_name: existing.user_metadata?.full_name || admin.name,
-          role: 'admin'
-        });
-      }
-    }
+    console.log("✅ Supabase Admin connected successfully.");
   } catch (error: any) {
     console.error("❌ Unexpected error in initSupabaseAdmin:", error.message || error);
   }
@@ -692,8 +636,6 @@ async function startServer() {
 
       const permObj = {
         id: userId,
-        polls: (permissions || []).includes('polls'),
-        drafts: (permissions || []).includes('drafts'),
         ocr: (permissions || []).includes('ocr'),
         suffix_edit: (permissions || []).includes('suffix-edit'),
         rapid_fire: (permissions || []).includes('rapid-fire'),
@@ -780,8 +722,6 @@ async function startServer() {
 
       const permObj = {
         id: createdUser.id,
-        polls: (permissions || []).includes('polls'),
-        drafts: (permissions || []).includes('drafts'),
         ocr: (permissions || []).includes('ocr'),
         suffix_edit: (permissions || []).includes('suffix-edit'),
         rapid_fire: (permissions || []).includes('rapid-fire'),
@@ -928,6 +868,21 @@ async function startServer() {
          .select('user_id, photo_url');
 
        const photoMap = new Map((photos || []).map(p => [p.user_id, p.photo_url]));
+
+       // Real "last active": last sign-in from Supabase auth (fallback handled in UI)
+       // Also extract Google avatar from user_metadata (avatar_url or picture)
+       let lastSignInMap = new Map<string, string>();
+       let googlePhotoMap = new Map<string, string>();
+       try {
+         const { data: authList } = await supabaseAdmin.auth.admin.listUsers({ page: 0, perPage: 1000 });
+         (authList?.users || []).forEach((u: any) => {
+           if (u && u.last_sign_in_at) lastSignInMap.set(u.id, u.last_sign_in_at);
+           const gPhoto = u?.user_metadata?.avatar_url || u?.user_metadata?.picture || '';
+           if (gPhoto) googlePhotoMap.set(u.id, gPhoto);
+         });
+       } catch (authErr) {
+         console.warn('Could not load auth data from Supabase Admin:', authErr);
+       }
  
        const mergedUsers = (profiles || [])
          .map((profile: any) => {
@@ -935,8 +890,6 @@ async function startServer() {
          if (profile.profile_permissions) {
            const p = Array.isArray(profile.profile_permissions) ? profile.profile_permissions[0] : profile.profile_permissions;
            if (p) {
-             if (p.polls) perms.push('polls');
-             if (p.drafts) perms.push('drafts');
              if (p.ocr) perms.push('ocr');
              if (p.suffix_edit) perms.push('suffix-edit');
               if (p.rapid_fire || p['rapid-fire']) perms.push('rapid-fire');
@@ -947,14 +900,17 @@ async function startServer() {
            id: profile.id,
            email: profile.email || '',
            displayName: profile.display_name || (profile.email ? profile.email.split('@')[0] : 'Anonymous'),
-           photoURL: photoMap.get(profile.id) || '',
+           photoURL: photoMap.get(profile.id) || googlePhotoMap.get(profile.id) || '',
            role: profile.role || 'user',
            permissions: perms,
            stats: { 
              generated: profile.total_generated || 0, 
              sent: profile.total_sent || 0 
            },
-           createdAt: profile.created_at ? { seconds: Math.floor(new Date(profile.created_at).getTime() / 1000) } : { seconds: 0 }
+           createdAt: profile.created_at ? { seconds: Math.floor(new Date(profile.created_at).getTime() / 1000) } : { seconds: 0 },
+           lastActive: lastSignInMap.get(profile.id)
+             ? Math.floor(new Date(lastSignInMap.get(profile.id) as string).getTime() / 1000)
+             : (profile.created_at ? Math.floor(new Date(profile.created_at).getTime() / 1000) : null)
          };
        });
 
@@ -962,6 +918,51 @@ async function startServer() {
     } catch (err: any) {
       console.error("Error in /api/admin/list-users:", err);
       res.status(500).json({ error: err.message || "Internal server error" });
+    }
+  });
+
+  // Daily "polls created" counts (last N days) for the Admin Dashboard chart
+  app.get("/api/admin/poll-daily", async (req, res) => {
+    try {
+      const isAdmin = await verifyAdmin(req);
+      if (!isAdmin) {
+        return res.status(403).json({ error: "Access denied." });
+      }
+
+      const daysParam = parseInt(String(req.query.days || "30"), 10);
+      const days = Number.isNaN(daysParam) ? 30 : Math.min(Math.max(daysParam, 1), 365);
+
+      const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+        auth: { autoRefreshToken: false, persistSession: false }
+      });
+
+      const sinceIso = new Date(Date.now() - (days - 1) * 24 * 3600 * 1000).toISOString();
+      const { data: rows, error } = await supabaseAdmin
+        .from('poll_questions')
+        .select('created_at')
+        .gte('created_at', sinceIso);
+
+      if (error) throw error;
+
+      // Count rows per UTC day
+      const counts = new Map<string, number>();
+      (rows || []).forEach((row: any) => {
+        if (!row || !row.created_at) return;
+        const key = new Date(row.created_at).toISOString().slice(0, 10);
+        counts.set(key, (counts.get(key) || 0) + 1);
+      });
+
+      // Zero-fill every day in the range so the chart has no gaps
+      const daily: { date: string; count: number }[] = [];
+      for (let i = days - 1; i >= 0; i--) {
+        const key = new Date(Date.now() - i * 24 * 3600 * 1000).toISOString().slice(0, 10);
+        daily.push({ date: key, count: counts.get(key) || 0 });
+      }
+
+      return res.status(200).json({ days: daily });
+    } catch (err: any) {
+      console.error("Error in /api/admin/poll-daily:", err);
+      return res.status(500).json({ error: err.message || "Internal server error" });
     }
   });
 
@@ -995,8 +996,8 @@ async function startServer() {
         .from('system_config')
         .upsert({
           key,
-          updated_by: value.updated_by || 'Admin',
-          default_suffix: value.default_suffix,
+          updated_by: value?.updated_by || 'Admin',
+          default_suffix: value?.default_suffix ?? '',
           updated_at: new Date().toISOString()
         }, { onConflict: 'key' })
         .select();
@@ -1006,14 +1007,7 @@ async function startServer() {
         throw error;
       }
       
-      if (!data || data.length === 0) {
-        if (!useServiceRole) {
-           throw new Error("Failed to save configuration. RLS blocked the action. Please configure SUPABASE_SERVICE_ROLE_KEY in your env.");
-        }
-        throw new Error("Failed to save configuration. No data returned.");
-      }
-      
-      res.status(200).json({ success: true, data });
+      res.status(200).json({ success: true, data: data || [] });
     } catch (err: any) {
       console.error("Error in /api/admin/save-config:", err);
       res.status(500).json({ error: err.message || "Internal server error" });
@@ -1052,7 +1046,7 @@ async function startServer() {
         });
       }
 
-      if (!data.default_suffix || data.default_suffix.trim() === '') {
+      if (data.default_suffix === null || data.default_suffix === undefined) {
           data.default_suffix = '{{  join: https://t.me/SOT_Academy}}';
       }
 

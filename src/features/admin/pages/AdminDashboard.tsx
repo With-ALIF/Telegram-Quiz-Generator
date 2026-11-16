@@ -1,193 +1,306 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useMemo, useState } from 'react';
+import { Users as UsersIcon } from 'lucide-react';
 import { useAdminUsers } from '../hooks/useAdminUsers';
 import { useAdminActions } from '../hooks/useAdminActions';
+import { useUserFilters } from '../hooks/useUserFilters';
 import { AdminHeader } from '../components/layout/AdminHeader';
-import { UserSearch } from '../components/users/UserSearch';
-import { UserDirectory } from '../components/users/UserDirectory';
+import { UserToolbar } from '../components/users/UserToolbar';
+import { UserCard } from '../components/users/UserCard';
+import { UserSkeleton } from '../components/users/UserSkeleton';
+import { BulkActionBar } from '../components/users/BulkActionBar';
 import { CreateUserModal } from '../components/management/CreateUserModal';
 import { PermissionModal } from '../components/management/PermissionModal';
 import { DeleteConfirmModal } from '../components/management/DeleteConfirmModal';
 import { ResetPasswordModal } from '../components/management/ResetPasswordModal';
-import { AdminUser } from '../types';
-import { Users, CheckSquare, Sparkles } from 'lucide-react';
+import { AdminUser, ManagedUser } from '../types';
+import { AVAILABLE_PAGES } from '../constants';
+import { exportUsersCsv, toManagedUser } from '../utils/adminUtils';
+import { updateUserPermissions } from '../services/adminService';
+import { toast, ToastHost } from '../../../components/ui/Toast';
 
 export default function AdminDashboard() {
-  const navigate = useNavigate();
-  const { loading, searchTerm, setSearchTerm, filteredUsers, regularUsersCount, loadUsers } = useAdminUsers();
-  const { loading: actionLoading, handleDelete, handleCreateUser, handleSavePermissions, handleResetPassword } = useAdminActions(loadUsers);
+  const { loading, users: rawUsers, loadUsers } = useAdminUsers();
+  const { loading: actionLoading, handleDelete, handleCreateUser, handleSavePermissions, handleResetPassword } =
+    useAdminActions(loadUsers);
+
+  /* Optimistic permission overrides: userId -> permissions.
+     Kept until the next refetch confirms server state; rolled back on failure. */
+  const [overrides, setOverrides] = useState<Record<string, string[]>>({});
+
+  const displayRaw = useMemo(
+    () => rawUsers.map(u => (overrides[u.id] ? { ...u, permissions: overrides[u.id] } : u)),
+    [rawUsers, overrides]
+  );
+
+  const filters = useUserFilters(displayRaw);
+
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [openFeatureUserId, setOpenFeatureUserId] = useState<string | null>(null);
+  const [assignOpen, setAssignOpen] = useState(false);
+  const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
 
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showPermissionModal, setShowPermissionModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null);
   const [userPermissions, setUserPermissions] = useState<string[]>([]);
-  const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
-  const [isExporting, setIsExporting] = useState(false);
-  const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
   const [userToDelete, setUserToDelete] = useState<AdminUser | null>(null);
   const [userToResetPassword, setUserToResetPassword] = useState<AdminUser | null>(null);
 
-  const handleInitiateDelete = (userId: string) => {
-    const user = filteredUsers.find(u => u.id === userId);
-    if (user) {
-      setUserToDelete(user);
+  const findRaw = (id: string) => displayRaw.find(u => u.id === id);
+
+  const selectedRaw = useMemo(
+    () => displayRaw.filter(u => selectedIds.includes(u.id)),
+    [displayRaw, selectedIds]
+  );
+
+  const commonFeatures = useMemo(() => {
+    if (selectedRaw.length === 0) return [];
+    const sets = selectedRaw.map(u => new Set(u.permissions ?? []));
+    return AVAILABLE_PAGES.filter(page => sets.every(s => s.has(page.id))).map(page => page.id);
+  }, [selectedRaw]);
+
+  /* ---------------- selection ---------------- */
+
+  const handleToggleSelect = (id: string) => {
+    setSelectedIds(prev => (prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]));
+  };
+
+  /* ---------------- inline feature editing (optimistic) ---------------- */
+
+  const handleToggleFeature = async (userId: string, featureId: string, enabled: boolean) => {
+    const raw = findRaw(userId);
+    if (!raw) return;
+    const current = raw.permissions ?? [];
+    const next = enabled
+      ? Array.from(new Set([...current, featureId]))
+      : current.filter(p => p !== featureId);
+
+    setOverrides(prev => ({ ...prev, [userId]: next })); // optimistic update
+    try {
+      await updateUserPermissions(userId, next);
+    } catch {
+      setOverrides(prev => {
+        const copy = { ...prev };
+        delete copy[userId];
+        return copy;
+      }); // rollback
+      toast.error('Could not save features — changes were reverted.');
     }
   };
 
-  const handleInitiateResetPassword = (user: AdminUser) => {
-    setUserToResetPassword(user);
+  const handleBulkToggleFeature = async (featureId: string, enabled: boolean) => {
+    if (selectedRaw.length === 0) return;
+    const updates: Record<string, string[]> = {};
+    selectedRaw.forEach(u => {
+      const current = u.permissions ?? [];
+      updates[u.id] = enabled
+        ? Array.from(new Set([...current, featureId]))
+        : current.filter(p => p !== featureId);
+    });
+
+    setOverrides(prev => ({ ...prev, ...updates })); // optimistic update
+    try {
+      await Promise.all(selectedRaw.map(u => updateUserPermissions(u.id, updates[u.id])));
+      toast.success(
+        `${enabled ? 'Assigned' : 'Removed'} feature for ${selectedRaw.length} user${selectedRaw.length === 1 ? '' : 's'}.`
+      );
+    } catch {
+      setOverrides(prev => {
+        const copy = { ...prev };
+        selectedRaw.forEach(u => delete copy[u.id]);
+        return copy;
+      }); // rollback
+      toast.error('Bulk update failed — changes were reverted.');
+    }
   };
 
-  const handleDownloadGlobalPDF = async () => {
+  /* ---------------- bulk actions ---------------- */
+
+  const handleGenerateReport = async () => {
+    if (selectedRaw.length === 0) return;
     setIsExporting(true);
     try {
-      const usersToExport = (Array.isArray(selectedUserIds) && selectedUserIds.length > 0)
-        ? filteredUsers.filter(u => selectedUserIds.includes(u.id))
-        : filteredUsers;
       // Load the PDF module (and jspdf inside it) only on demand.
       const { generateGlobalUserReportPDF } = await import('../utils/pdfExport');
-      await generateGlobalUserReportPDF(usersToExport);
+      await generateGlobalUserReportPDF(selectedRaw);
     } catch (error) {
-      console.error('Error generating global PDF:', error);
-      alert('Failed to generate user list PDF.');
+      console.error('Error generating user report PDF:', error);
+      toast.error('Failed to generate user report PDF.');
     } finally {
       setIsExporting(false);
     }
   };
 
-  const handleToggleSelectUser = (id: string) => {
-    setSelectedUserIds(prev => 
-      prev.includes(id) ? prev.filter(uid => uid !== id) : [...prev, id]
-    );
+  const handleExport = () => {
+    try {
+      exportUsersCsv(selectedRaw.map(toManagedUser));
+      toast.success(`Exported ${selectedRaw.length} user${selectedRaw.length === 1 ? '' : 's'} to CSV.`);
+    } catch (error) {
+      console.error('CSV export failed:', error);
+      toast.error('Failed to export users.');
+    }
   };
 
-  const handleToggleAll = () => {
-    const allFilteredIds = filteredUsers.map(u => u.id);
-    const areAllSelected = allFilteredIds.length > 0 && allFilteredIds.every(id => selectedUserIds.includes(id));
-    
-    if (areAllSelected) {
-      setSelectedUserIds(prev => prev.filter(id => !allFilteredIds.includes(id)));
-    } else {
-      setSelectedUserIds(prev => {
-        const unique = new Set([...prev, ...allFilteredIds]);
-        return Array.from(unique);
+  /* ---------------- kebab menu / modals ---------------- */
+
+  const handleOpenFeatures = (id: string) => {
+    setActiveMenuId(null);
+    setOpenFeatureUserId(prev => (prev === id ? null : id));
+  };
+
+  const handleOpenPermissions = (user: ManagedUser) => {
+    const raw = findRaw(user.id);
+    if (!raw) return;
+    setSelectedUser(raw);
+    setUserPermissions(raw.permissions || []);
+    setShowPermissionModal(true);
+  };
+
+  const handleSaveFromModal = async () => {
+    if (!selectedUser) return;
+    const success = await handleSavePermissions(selectedUser.id, userPermissions);
+    if (success) {
+      setOverrides(prev => {
+        const copy = { ...prev };
+        delete copy[selectedUser.id];
+        return copy;
+      });
+      setShowPermissionModal(false);
+    }
+  };
+
+  const handleInitiateDelete = (user: ManagedUser) => {
+    const raw = findRaw(user.id);
+    if (raw) setUserToDelete(raw);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!userToDelete) return;
+    const success = await handleDelete(userToDelete.id);
+    if (success) {
+      const id = userToDelete.id;
+      setUserToDelete(null);
+      setSelectedIds(prev => prev.filter(x => x !== id));
+      setOverrides(prev => {
+        const copy = { ...prev };
+        delete copy[id];
+        return copy;
       });
     }
   };
 
-  const handleOpenPermissions = (user: AdminUser) => {
-    setSelectedUser(user);
-    setUserPermissions(user.permissions || []);
-    setShowPermissionModal(true);
+  const handleInitiateResetPassword = (user: ManagedUser) => {
+    const raw = findRaw(user.id);
+    if (raw) setUserToResetPassword(raw);
   };
 
-  if (loading) return (
-    <div className="flex items-center justify-center min-h-[60vh]">
-      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600" />
-    </div>
-  );
+  /* ---------------- render ---------------- */
 
   return (
-    <div className="max-w-6xl mx-auto px-4 pt-2 pb-8">
+    <div className="mx-auto max-w-6xl px-4 pb-8 pt-2">
+      <ToastHost />
       <AdminHeader onCreateClick={() => setShowCreateModal(true)} />
 
-      <UserSearch 
-        value={searchTerm} 
-        onChange={setSearchTerm} 
-        onDownloadPDF={handleDownloadGlobalPDF} 
-        isDownloading={isExporting}
-        selectedCount={Array.isArray(selectedUserIds) ? selectedUserIds.length : 0}
+      <UserToolbar
+        search={filters.search}
+        onSearchChange={filters.setSearch}
+        status={filters.status}
+        onStatusChange={filters.setStatus}
+        feature={filters.feature}
+        onFeatureChange={filters.setFeature}
+        sortKey={filters.sortKey}
+        sortDir={filters.sortDir}
+        onSortChange={filters.setSort}
+        onToggleSortDir={filters.toggleSortDir}
+        resultCount={filters.users.length}
+        hasActiveFilters={filters.hasActiveFilters}
+        onClearFilters={filters.clearFilters}
       />
 
-      {/* Selection Control Bar */}
-      <div className={`mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4 px-5 py-4 rounded-2xl border transition-all duration-300 shadow-sm ${
-        (Array.isArray(selectedUserIds) && selectedUserIds.length > 0)
-          ? 'bg-emerald-50/70 border-emerald-200/80 backdrop-blur-sm' 
-          : 'bg-slate-50/80 border-slate-200/70'
-      }`}>
-        <div className="flex items-start sm:items-center gap-3.5">
-          <label className="flex items-center h-full cursor-pointer select-none">
-            <input
-              type="checkbox"
-              checked={Array.isArray(filteredUsers) && filteredUsers.length > 0 && filteredUsers.every(u => selectedUserIds.includes(u.id))}
-              onChange={handleToggleAll}
-              className="w-5 h-5 text-indigo-600 bg-white border-slate-300 rounded-lg focus:ring-indigo-500 focus:ring-2 cursor-pointer transition-all"
-            />
-          </label>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="text-slate-800 text-sm font-bold flex items-center gap-1.5">
-                {(Array.isArray(selectedUserIds) && selectedUserIds.length === 0) ? (
-                  <>
-                    <Users className="w-4 h-4 text-slate-500" />
-                    Global Mode: All Records Active
-                  </>
-                ) : (
-                  <>
-                    <CheckSquare className="w-4 h-4 text-emerald-600" />
-                    Targeted Mode: {Array.isArray(selectedUserIds) ? selectedUserIds.length : 0} profile{Array.isArray(selectedUserIds) && selectedUserIds.length > 1 ? 's' : ''} compiled
-                  </>
-                )}
-              </span>
-              <span className={`text-[10px] uppercase tracking-wider font-extrabold px-2 py-0.5 rounded-full ${
-                (Array.isArray(selectedUserIds) && selectedUserIds.length === 0) 
-                  ? 'bg-slate-200/70 text-slate-600' 
-                  : 'bg-emerald-200/60 text-emerald-800'
-              }`}>
-                {(Array.isArray(selectedUserIds) && selectedUserIds.length === 0) ? 'Batch All' : 'Custom Subset'}
-              </span>
-            </div>
-            <p className="text-xs text-slate-500 mt-1">
-              {(Array.isArray(selectedUserIds) && selectedUserIds.length === 0) 
-                ? "Checking the select-all box above or ticking individual list boxes compiles a tailored report document."
-                : `Export parameters locked onto selected user files. Press the export button to generate your polished PDF list download.`}
-            </p>
-          </div>
-        </div>
-        
-        {(Array.isArray(selectedUserIds) && selectedUserIds.length > 0) && (
-          <div className="flex items-center gap-2 self-start md:self-auto">
-            <button 
-              onClick={() => setSelectedUserIds([])}
-              className="text-xs font-bold text-slate-600 hover:text-slate-800 bg-white px-3.5 py-2 border border-slate-200 rounded-xl hover:border-slate-300 transition-all active:scale-95 shadow-sm hover:shadow cursor-pointer"
-            >
-              Clear Selection
-            </button>
-            <button 
-              onClick={handleToggleAll}
-              className="text-xs font-bold text-indigo-600 hover:text-indigo-800 bg-indigo-50 px-3.5 py-2 border border-indigo-100 rounded-xl hover:bg-indigo-100 transition-all active:scale-95 cursor-pointer"
-            >
-              Select All Filtered
-            </button>
-          </div>
-        )}
-      </div>
-      
-      <UserDirectory 
-        users={filteredUsers} 
-        activeMenuId={activeMenuId} 
-        setActiveMenuId={setActiveMenuId} 
-        onManageAccess={handleOpenPermissions} 
-        onDelete={handleInitiateDelete} 
-        onResetPassword={handleInitiateResetPassword}
-        selectedUserIds={selectedUserIds}
-        onToggleSelectUser={handleToggleSelectUser}
+      <BulkActionBar
+        count={selectedIds.length}
+        onClear={() => setSelectedIds([])}
+        onGenerateReport={handleGenerateReport}
+        onExport={handleExport}
+        assignOpen={assignOpen}
+        onToggleAssign={() => setAssignOpen(prev => !prev)}
+        onCloseAssign={() => setAssignOpen(false)}
+        commonFeatures={commonFeatures}
+        onToggleFeature={handleBulkToggleFeature}
+        busy={isExporting || actionLoading}
       />
-      
-      {showCreateModal && <CreateUserModal onClose={() => setShowCreateModal(false)} onSubmit={handleCreateUser} loading={actionLoading} />}
+
+      {loading ? (
+        <UserSkeleton />
+      ) : filters.users.length === 0 ? (
+        <div className="rounded-xl border border-dashed border-slate-300 bg-white px-6 py-16 text-center shadow-sm">
+          <UsersIcon
+            className="mx-auto mb-3 h-10 w-10 text-slate-300"
+            aria-hidden="true"
+          />
+          <p className="text-sm font-semibold text-slate-700">
+            No users match your filters
+          </p>
+          <p className="mt-1 text-xs text-slate-400">
+            Try a different search, or clear the active filters.
+          </p>
+          {filters.hasActiveFilters && (
+            <button
+              type="button"
+              onClick={filters.clearFilters}
+              className="mt-4 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 shadow-sm transition-colors hover:bg-slate-50"
+            >
+              Clear filters
+            </button>
+          )}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {filters.users.map(user => (
+            <UserCard
+              key={user.id}
+              user={user}
+              selected={selectedIds.includes(user.id)}
+              onToggleSelect={() => handleToggleSelect(user.id)}
+              featurePopoverOpen={openFeatureUserId === user.id}
+              onOpenFeatures={() => handleOpenFeatures(user.id)}
+              onCloseFeatures={() => setOpenFeatureUserId(null)}
+              onToggleFeature={(featureId, enabled) => handleToggleFeature(user.id, featureId, enabled)}
+              activeMenuId={activeMenuId}
+              setActiveMenuId={setActiveMenuId}
+              onManageAccess={() => handleOpenPermissions(user)}
+              onDelete={() => handleInitiateDelete(user)}
+              onResetPassword={() => handleInitiateResetPassword(user)}
+            />
+          ))}
+        </div>
+      )}
+
+      {showCreateModal && (
+        <CreateUserModal
+          onClose={() => setShowCreateModal(false)}
+          onSubmit={handleCreateUser}
+          loading={actionLoading}
+        />
+      )}
       {showPermissionModal && selectedUser && (
-        <PermissionModal 
-          user={selectedUser} permissions={userPermissions} 
-          onToggle={(id) => setUserPermissions(prev => prev.includes(id) ? prev.filter(p => p !== id) : [...prev, id])}
-          onSave={() => handleSavePermissions(selectedUser.id, userPermissions).then(success => success && setShowPermissionModal(false))}
-          onClose={() => setShowPermissionModal(false)} loading={actionLoading}
+        <PermissionModal
+          user={selectedUser}
+          permissions={userPermissions}
+          onToggle={id =>
+            setUserPermissions(prev => (prev.includes(id) ? prev.filter(p => p !== id) : [...prev, id]))
+          }
+          onSave={handleSaveFromModal}
+          onClose={() => setShowPermissionModal(false)}
+          loading={actionLoading}
         />
       )}
       {userToDelete && (
-        <DeleteConfirmModal 
+        <DeleteConfirmModal
           user={userToDelete}
           onClose={() => setUserToDelete(null)}
-          onConfirm={() => handleDelete(userToDelete.id).then(success => success && setUserToDelete(null))}
+          onConfirm={handleConfirmDelete}
           loading={actionLoading}
         />
       )}
@@ -195,11 +308,9 @@ export default function AdminDashboard() {
         <ResetPasswordModal
           user={userToResetPassword}
           onClose={() => setUserToResetPassword(null)}
-          onConfirm={async (password) => {
+          onConfirm={async password => {
             const success = await handleResetPassword(userToResetPassword.id, password);
-            if (success) {
-              setUserToResetPassword(null);
-            }
+            if (success) setUserToResetPassword(null);
             return success;
           }}
           loading={actionLoading}

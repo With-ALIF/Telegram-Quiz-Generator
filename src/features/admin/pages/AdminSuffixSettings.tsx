@@ -31,20 +31,20 @@ export default function AdminSuffixSettings() {
     setIsSavingSuffix(true);
     try {
       const now = new Date();
-      const success = await saveAppConfig({
+      const res = await saveAppConfig({
         default_suffix: localSuffix,
-        updated_at: now,
+        updated_at: now.toISOString(),
         updated_by: user?.email || 'admin'
       });
-      if (success) {
+      if (res.success) {
         setSuffixSuccessMsg(`সফলভাবে গ্লোবাল সাফিক্স সেভ করা হয়েছে! (সেভের সময়: ${now.toLocaleTimeString()})`);
         setTimeout(() => setSuffixSuccessMsg(''), 5000);
       } else {
-        alert('Failed to save suffix.');
+        alert(res.error || 'Failed to save suffix.');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Save error:', error);
-      alert('An error occurred while saving.');
+      alert(error?.message || 'An error occurred while saving.');
     } finally {
       setIsSavingSuffix(false);
     }

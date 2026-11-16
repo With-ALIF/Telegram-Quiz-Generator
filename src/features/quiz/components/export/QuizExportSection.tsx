@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { FileSpreadsheet, FileJson, Send } from 'lucide-react';
+import { FileSpreadsheet, FileJson } from 'lucide-react';
 import { QuizQuestion } from '../../../../types';
 import { exportToCSV } from '../../services/csvExportService';
 import { exportToJSON } from '../../../../lib/jsonExport';
@@ -8,22 +8,14 @@ import CsvExportModal from './CsvExportModal';
 
 interface QuizExportSectionProps {
   questions: QuizQuestion[];
-  selectedCount?: number;
-  onSendToTelegram?: () => void;
 }
 
-export default function QuizExportSection({ 
-  questions, 
-  selectedCount = 0,
-  onSendToTelegram 
-}: QuizExportSectionProps) {
+export default function QuizExportSection({ questions }: QuizExportSectionProps) {
   const [showCsvPrompt, setShowCsvPrompt] = useState(false);
   const [csvSuffix, setCsvSuffix] = useState('1');
   const [filename, setFilename] = useState('');
 
   if (questions.length === 0) return null;
-
-  const buttonSuffix = selectedCount > 0 ? `Selected (${selectedCount})` : `All (${questions.length})`;
 
   const handleCsvExport = () => {
     exportToCSV(questions, csvSuffix, filename);
@@ -32,28 +24,26 @@ export default function QuizExportSection({
 
   return (
     <>
-      <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-col xl:flex-row items-center justify-between gap-4">
-        <div>
-          <h3 className="text-sm font-black text-slate-800 uppercase tracking-wider">💾 Export Data</h3>
-          <p className="text-xs text-slate-500 mt-1 font-medium">
-            Download your quizzes in CSV or JSON format for external use.
-          </p>
+      <div className="bg-white border border-slate-200 rounded-2xl px-3.5 py-3 sm:px-4 sm:py-3.5 shadow-sm">
+        <div className="flex items-center justify-between gap-3">
+          <h3 className="text-sm font-black text-slate-800">Export Data</h3>
+          <span className="text-xs font-bold text-slate-400">{questions.length} items</span>
         </div>
-        <div className="flex flex-wrap gap-3 w-full xl:w-auto">
 
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mt-2.5">
           <button
             onClick={() => setShowCsvPrompt(true)}
-            className="flex-1 sm:flex-none flex items-center gap-2 px-4 py-2.5 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 rounded-xl text-sm font-bold transition-all shadow-sm active:scale-95 justify-center"
+            className="flex items-center justify-center gap-2 py-2 px-4 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition-all shadow-sm active:scale-95 cursor-pointer"
           >
-            <FileSpreadsheet className="w-4 h-4" />
-            CSV {buttonSuffix}
+            <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+            CSV Export
           </button>
           <button
             onClick={() => exportToJSON(questions)}
-            className="flex-1 sm:flex-none flex items-center gap-2 px-4 py-2.5 bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 rounded-xl text-sm font-bold transition-all shadow-sm active:scale-95 justify-center"
+            className="flex items-center justify-center gap-2 py-2 px-4 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition-all shadow-sm active:scale-95 cursor-pointer"
           >
-            <FileJson className="w-4 h-4" />
-            JSON {buttonSuffix}
+            <FileJson className="w-4 h-4 text-blue-600" />
+            JSON Export
           </button>
         </div>
       </div>

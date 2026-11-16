@@ -3,13 +3,10 @@ import { ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { ADMIN_EMAILS } from '../constants';
-import { isConfigured, configuredUrl, configuredAnonKey } from '../../../lib/supabase';
+import { isConfigured, configuredUrl, configuredAnonKey, supabase } from '../../../lib/supabase';
 import AuthHeader from '../components/AuthHeader';
 import AuthForm from '../components/AuthForm';
-import AdminContactList from '../components/AdminContactList';
-import AdminRequestModal from '../components/AdminRequestModal';
-import SignUpAccessInfo from '../components/SignUpAccessInfo';
-import { useAdminRequest } from '../hooks/useAdminRequest';
+import GoogleSignInButton from '../components/GoogleSignInButton';
 
 export default function AuthPage() {
   const [isSignUp, setIsSignUp] = useState(false);
@@ -18,7 +15,6 @@ export default function AuthPage() {
   const [message, setMessage] = useState('');
   const { loginWithEmail, signUpWithEmailAuth, resetPasswordAuth } = useAuth();
   const navigate = useNavigate();
-  const adminReq = useAdminRequest();
 
   const handleResetPassword = async () => {
     if (!creds.email) {
@@ -42,7 +38,13 @@ export default function AuthPage() {
     try {
       if (isSignUp) {
         await signUpWithEmailAuth(creds.email, creds.password);
-        navigate('/');
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          navigate('/');
+        } else {
+          setMessage('Account created! ইমেইলে গিয়ে confirmation লিংকে ক্লিক করুন, তারপর sign in করুন।');
+          setIsSignUp(false);
+        }
       } else {
         const user = await loginWithEmail(creds.email, creds.password);
         if (user && user.email && ADMIN_EMAILS.map(e => e.toLowerCase()).includes(user.email.toLowerCase())) navigate('/system-stats');
@@ -54,7 +56,8 @@ export default function AuthPage() {
       if (err.code === 'auth/wrong-password') msg = 'Incorrect password. Please verify and try again.';
       else if (err.code === 'auth/user-not-found') msg = 'No account found with this email.';
       else if (err.code === 'auth/invalid-email') msg = 'Please enter a valid email address.';
-      else if (err.code === 'auth/email-already-in-use') msg = 'This email is already in use.';
+      else if (err.code === 'auth/email-already-in-use' || err.message?.toLowerCase().includes('already registered') || err.code === 'user_already_exists') msg = 'This email is already registered. Please sign in instead.';
+      else if (err.code === 'weak_password' || err.message?.toLowerCase().includes('password should be')) msg = 'Password must be at least 6 characters long.';
       else if (err.message) msg = err.message;
       setError(msg);
     }
@@ -141,18 +144,18 @@ export default function AuthPage() {
           </div>
         )}
         {isSignUp ? (
-          <div className="space-y-6">
-            <SignUpAccessInfo />
-            <AdminContactList onAdminClick={adminReq.handleAdminClick} showAdmins={adminReq.showAdmins} setShowAdmins={adminReq.setShowAdmins} />
+          <div className="space-y-4">
+            <AuthForm isSignUp email={creds.email} setEmail={e => setCreds({...creds, email: e})} password={creds.password} setPassword={e => setCreds({...creds, password: e})} showPassword={creds.show} setShowPassword={s => setCreds({...creds, show: s})} onSubmit={handleAuth} />
+            <GoogleSignInButton label="Continue with Google" />
           </div>
         ) : (
           <div className="space-y-4">
             <AuthForm isSignUp={false} email={creds.email} setEmail={e => setCreds({...creds, email: e})} password={creds.password} setPassword={e => setCreds({...creds, password: e})} showPassword={creds.show} setShowPassword={s => setCreds({...creds, show: s})} onSubmit={handleAuth} />
+            <GoogleSignInButton label="Continue with Google" />
           </div>
         )}
         <AuthToggle isSignUp={isSignUp} onToggle={() => setIsSignUp(!isSignUp)} />
       </div>
-      <AdminRequestModal isOpen={adminReq.showRequestModal} onClose={adminReq.closeRequestModal} selectedAdmin={adminReq.selectedAdmin} form={adminReq.requestForm} setForm={adminReq.setRequestForm} />
     </div>
   );
 }

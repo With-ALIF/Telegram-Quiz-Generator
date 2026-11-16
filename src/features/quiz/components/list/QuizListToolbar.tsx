@@ -1,16 +1,13 @@
 import React from 'react';
-import { TelegramSettings, QuizQuestion } from '../../../../types';
+import { TelegramSettings } from '../../../../types';
 import { useAuth } from '../../../auth/hooks/useAuth';
 import DisplayConfig from './DisplayConfig';
-import SendButton from './SendButton';
 import { QUIZ_TOPICS } from '../../constants';
 import { Filter } from 'lucide-react';
 
 interface QuizListToolbarProps {
-  questions: QuizQuestion[];
   settings: TelegramSettings;
   onChannelChange: (channelId: string) => void;
-  handleSendAll: () => void;
   selectedTopic: string;
   onTopicChange: (topic: string) => void;
   canEditSuffix?: boolean;
@@ -19,11 +16,11 @@ interface QuizListToolbarProps {
   setDelaySeconds?: (sec: number) => void;
 }
 
+const DELAY_OPTIONS = [1, 3, 5, 10, 15, 30, 60, 90];
+
 export default function QuizListToolbar({
-  questions,
   settings,
   onChannelChange,
-  handleSendAll,
   selectedTopic,
   onTopicChange,
   canEditSuffix: canEditSuffixProp,
@@ -32,12 +29,8 @@ export default function QuizListToolbar({
   setDelaySeconds
 }: QuizListToolbarProps) {
   const { user, isAdmin } = useAuth();
-  
+
   const canEditSuffix = canEditSuffixProp !== undefined ? canEditSuffixProp : (isAdmin || user?.permissions?.includes('suffix-edit'));
-  
-  const sendableCount = (questions || []).filter(q => q.status !== 'sending').length;
-  const isSending = (questions || []).some(q => q.status === 'sending');
-  const allSent = (questions || []).length > 0 && (questions || []).every(q => q.status === 'sent');
 
   const channelsList = settings?.channels || [];
   const selectedChannelIdsList = settings?.selectedChannelIds || [];
@@ -81,25 +74,29 @@ export default function QuizListToolbar({
     }
   }
 
-  if (!questions || questions.length === 0) return null;
+  const labelClass = "text-[10px] lg:text-[11px] uppercase font-bold text-slate-400 tracking-wider";
+  const fieldClass = "w-full bg-white border border-slate-200 rounded-xl text-xs lg:text-sm font-semibold text-slate-700 outline-none shadow-sm cursor-pointer transition-all hover:border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30";
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex flex-col sm:flex-row gap-4">
+    <div className="bg-white border border-slate-200 rounded-2xl px-3.5 py-3 sm:px-4 sm:py-3.5 shadow-sm space-y-3">
+      <h3 className="text-sm font-black text-slate-800">Delivery Configuration</h3>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
         {settings.channels && settings.channels.length > 0 && (
-          <div className="flex flex-col gap-1.5 w-full sm:w-1/2">
-            <label className="text-[10px] lg:text-[11px] uppercase font-bold text-slate-400 px-1 flex items-center justify-between tracking-wider">
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="target-channel" className={`${labelClass} flex items-center justify-between`}>
               Target Channel
               {user && settings.selectedChannelIds && settings.selectedChannelIds.length > 1 && (
-                <span className="text-[8px] lg:text-[10px] bg-blue-100 text-blue-600 px-1.5 py-0.5 rounded-full font-bold">
+                <span className="text-[8px] lg:text-[10px] bg-blue-100 text-blue-600 px-1.5 py-0.5 rounded-full font-bold normal-case">
                   {settings.selectedChannelIds.length} SELECTED
                 </span>
               )}
             </label>
             <select
+              id="target-channel"
               value={settings.activeChannelId || ''}
               onChange={(e) => onChannelChange(e.target.value)}
-              className="p-2 lg:p-3 bg-white border border-slate-200 rounded-xl text-xs lg:text-sm font-bold text-slate-700 focus:ring-2 focus:ring-blue-500 outline-none shadow-sm cursor-pointer w-full transition-all hover:border-slate-300"
+              className={`${fieldClass} py-2 lg:py-2.5 px-3`}
             >
               {visibleChannels.map(c => (
                 <option key={c.id} value={c.id}>{c.name} ({c.type})</option>
@@ -107,16 +104,16 @@ export default function QuizListToolbar({
             </select>
           </div>
         )}
-        <div className="flex flex-col gap-1.5 w-full sm:w-1/2">
-          <label className="text-[10px] lg:text-[11px] uppercase font-bold text-slate-400 px-1 flex items-center tracking-wider">
-            Filter by Subject
-          </label>
-          <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-3 p-2 lg:p-3 shadow-sm transition-all hover:border-slate-300">
-            <Filter className="w-4 h-4 text-slate-400 shrink-0" />
+
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor="subject-filter" className={labelClass}>Subject</label>
+          <div className="relative">
+            <Filter className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
             <select
+              id="subject-filter"
               value={selectedTopic}
               onChange={(e) => onTopicChange(e.target.value)}
-              className="bg-transparent text-xs lg:text-sm font-bold text-slate-700 outline-none w-full cursor-pointer focus:ring-0"
+              className={`${fieldClass} py-2 lg:py-2.5 pl-9 pr-3`}
             >
               <option value="all">All Subjects</option>
               <option value="uncategorized">Uncategorized</option>
@@ -128,54 +125,47 @@ export default function QuizListToolbar({
         </div>
       </div>
 
-      <div className="flex flex-col gap-3">
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-white border border-slate-200 rounded-xl p-3 shadow-sm">
-          <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
-            ⏱️ পরবর্তী পোলের বিরতি (সেকেন্ড):
-          </span>
-          <div className="flex items-center gap-1.5 flex-wrap">
-            {[1, 3, 5, 10, 30, 60, 90].map((sec) => (
-              <button
-                key={sec}
-                type="button"
-                onClick={() => setDelaySeconds && setDelaySeconds(sec)}
-                className={`px-2.5 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                  delaySeconds === sec
-                    ? 'bg-blue-600 text-white shadow-sm'
-                    : 'bg-slate-100 text-slate-700 border border-slate-200 hover:bg-slate-200'
-                }`}
-              >
-                {sec}s
-              </button>
-            ))}
-            {setDelaySeconds && (
-              <input
-                type="number"
-                min="1"
-                max="90"
-                value={delaySeconds}
-                onChange={(e) => {
-                  const val = parseInt(e.target.value, 10);
-                  if (!isNaN(val) && val >= 1 && val <= 90) setDelaySeconds(val);
-                }}
-                className="w-16 p-1 bg-white border border-slate-200 rounded-xl text-xs font-bold text-center text-slate-700 outline-none focus:ring-2 focus:ring-blue-500"
-                title="কাস্টম সেকেন্ড (সর্বোচ্চ ৯০ সেকেন্ড)"
-              />
-            )}
-          </div>
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+        <span className={`${labelClass} shrink-0`}>Message Delay</span>
+        <div className="flex flex-wrap gap-1.5">
+          {DELAY_OPTIONS.map((sec) => (
+            <button
+              key={sec}
+              type="button"
+              onClick={() => setDelaySeconds && setDelaySeconds(sec)}
+              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                delaySeconds === sec
+                  ? 'bg-blue-600 text-white shadow-sm shadow-blue-200'
+                  : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 hover:border-slate-300'
+              }`}
+            >
+              {sec}s
+            </button>
+          ))}
         </div>
 
-        <div className="w-full">
-          <DisplayConfig displayPrefix={displayPrefix || ''} displaySuffix={displaySuffix || ''} />
-        </div>
-        <div className="w-full">
-          <SendButton 
-            isSending={isSending} 
-            sendableCount={sendableCount} 
-            allSent={allSent} 
-            handleSendAll={handleSendAll} 
+        <div className="flex items-center gap-2 shrink-0 sm:ml-auto">
+          <label htmlFor="custom-delay" className={`${labelClass} whitespace-nowrap`}>Custom delay</label>
+          <input
+            id="custom-delay"
+            type="number"
+            min="1"
+            max="90"
+            value={delaySeconds}
+            placeholder="5 seconds"
+            onChange={(e) => {
+              const val = parseInt(e.target.value, 10);
+              if (!isNaN(val) && val >= 1 && val <= 90) setDelaySeconds && setDelaySeconds(val);
+            }}
+            className="w-24 bg-white border border-slate-200 rounded-lg py-1.5 px-2.5 text-xs font-semibold text-slate-700 outline-none shadow-sm transition-all hover:border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30 placeholder:text-slate-400 placeholder:font-medium"
+            title="কাস্টম সেকেন্ড (সর্বোচ্চ ৯০ সেকেন্ড)"
           />
         </div>
+      </div>
+
+      <div className="flex flex-col gap-1.5">
+        <span className={labelClass}>Message Format</span>
+        <DisplayConfig displayPrefix={displayPrefix || ''} displaySuffix={displaySuffix || ''} />
       </div>
     </div>
   );

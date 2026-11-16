@@ -45,7 +45,10 @@ export const fetchAppConfig = async (): Promise<AppConfig | null> => {
   }
 };
 
-export const saveAppConfig = async (config: AppConfig): Promise<boolean> => {
+export const saveAppConfig = async (config: AppConfig): Promise<{ success: boolean; error?: string }> => {
+  let apiError: string | null = null;
+  
+  // 1. Try Backend API first (uses Supabase Service Role Key to bypass RLS)
   try {
     const { data: sessionData } = await supabase.auth.getSession();
     const token = sessionData?.session?.access_token;
@@ -62,17 +65,48 @@ export const saveAppConfig = async (config: AppConfig): Promise<boolean> => {
       })
     });
 
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || 'Failed to save config');
+    if (response.ok) {
+      localStorage.setItem('app_config', JSON.stringify(config));
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('app_config_updated', { detail: config }));
+      }
+      return { success: true };
+    } else {
+      const errorData = await response.json().catch(() => ({}));
+      apiError = errorData.error || `HTTP ${response.status}`;
+      console.warn("API /api/admin/save-config failed, attempting direct Supabase upsert fallback:", apiError);
+    }
+  } catch (err: any) {
+    apiError = err.message || 'Network error';
+    console.warn("API call failed, attempting direct Supabase upsert fallback:", err);
+  }
+
+  // 2. Fallback: Direct Supabase client upsert
+  try {
+    const { error: directError } = await supabase
+      .from('system_config')
+      .upsert({
+        key: CONFIG_KEY,
+        default_suffix: config.default_suffix,
+        updated_by: config.updated_by || 'Admin',
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'key' });
+
+    if (directError) {
+      console.error("Direct Supabase save failed:", directError);
+      return { 
+        success: false, 
+        error: directError.message || apiError || 'Failed to save config in database' 
+      };
     }
 
-    // Update local cache
     localStorage.setItem('app_config', JSON.stringify(config));
-    
-    return true;
-  } catch (error) {
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('app_config_updated', { detail: config }));
+    }
+    return { success: true };
+  } catch (error: any) {
     console.error("Error saving app config:", error);
-    return false;
+    return { success: false, error: error.message || apiError || 'Unknown error' };
   }
 };

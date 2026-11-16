@@ -1,9 +1,9 @@
 import React, { lazy } from 'react';
-import { Route } from 'react-router-dom';
+import { Navigate, Route } from 'react-router-dom';
 import ProtectedRoute from '../../components/ProtectedRoute';
+import { useAuth } from '../../features/auth/hooks/useAuth';
 import { useAppInit } from '../useAppInit';
 
-const About = lazy(() => import('../../features/about/pages/About'));
 const AuthPage = lazy(() => import('../../features/auth/pages/AuthPage'));
 const ProfilePage = lazy(() => import('../../features/profile/pages/ProfilePage'));
 const SettingsPage = lazy(() => import('../../features/settings/pages/SettingsPage'));
@@ -14,24 +14,39 @@ interface UserRoutesProps {
 
 export const useUserRoutes = ({ appState }: UserRoutesProps) => {
   const { settings, botToken } = appState;
+  const { isAdmin } = useAuth();
 
   return (
     <>
-      <Route path="/about" element={<About />} />
       <Route path="/auth" element={<AuthPage />} />
-      <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+      <Route 
+        path="/profile" 
+        element={
+          <ProtectedRoute>
+            {isAdmin ? (
+              <Navigate to="/system-stats" replace />
+            ) : (
+              <ProfilePage />
+            )}
+          </ProtectedRoute>
+        } 
+      />
       <Route 
         path="/settings" 
         element={
           <ProtectedRoute>
-            <SettingsPage
-              settings={settings.settings}
-              setSettings={settings.setSettings}
-              saveSettings={settings.saveSettings}
-              canEditSuffix={settings.canEditSuffix}
-              globalDefaultSuffix={settings.globalDefaultSuffix}
-              isLoading={settings.isLoading}
-            />
+            {isAdmin ? (
+              <Navigate to="/system-stats" replace />
+            ) : (
+              <SettingsPage
+                settings={settings.settings}
+                setSettings={settings.setSettings}
+                saveSettings={settings.saveSettings}
+                canEditSuffix={settings.canEditSuffix}
+                globalDefaultSuffix={settings.globalDefaultSuffix}
+                isLoading={settings.isLoading}
+              />
+            )}
           </ProtectedRoute>
         } 
       />

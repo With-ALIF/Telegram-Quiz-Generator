@@ -113,6 +113,21 @@ export default async function handler(req: any, res: any) {
 
         const photoMap = new Map((photos || []).map(p => [p.user_id, p.photo_url]));
 
+        // Real "last active": last sign-in from Supabase auth (fallback handled in UI)
+        // Also extract Google avatar from user_metadata (avatar_url or picture)
+        let lastSignInMap = new Map<string, string>();
+        let googlePhotoMap = new Map<string, string>();
+        try {
+          const { data: authList } = await supabaseAdmin.auth.admin.listUsers({ page: 0, perPage: 1000 });
+          (authList?.users || []).forEach((u: any) => {
+            if (u && u.last_sign_in_at) lastSignInMap.set(u.id, u.last_sign_in_at);
+            const gPhoto = u?.user_metadata?.avatar_url || u?.user_metadata?.picture || '';
+            if (gPhoto) googlePhotoMap.set(u.id, gPhoto);
+          });
+        } catch (authErr) {
+          console.warn('Could not load auth data from Supabase Admin:', authErr);
+        }
+
         const mergedUsers = (profiles || []).map((profile: any) => {
           const stats = {
             generated: profile.total_generated || 0,
@@ -123,8 +138,6 @@ export default async function handler(req: any, res: any) {
           if (profile.profile_permissions) {
             const p = Array.isArray(profile.profile_permissions) ? profile.profile_permissions[0] : profile.profile_permissions;
             if (p) {
-              if (p.polls) perms.push('polls');
-              if (p.drafts) perms.push('drafts');
               if (p.ocr) perms.push('ocr');
               if (p.suffix_edit) perms.push('suffix-edit');
               if (p.rapid_fire || p['rapid-fire']) perms.push('rapid-fire');
@@ -135,15 +148,50 @@ export default async function handler(req: any, res: any) {
             id: profile.id,
             email: profile.email || '',
             displayName: profile.display_name || (profile.email ? profile.email.split('@')[0] : 'Anonymous'),
-            photoURL: photoMap.get(profile.id) || '',
+            photoURL: photoMap.get(profile.id) || googlePhotoMap.get(profile.id) || '',
             role: profile.role || 'user',
             permissions: perms,
             stats: stats,
-            createdAt: profile.created_at ? { seconds: Math.floor(new Date(profile.created_at).getTime() / 1000) } : { seconds: 0 }
+            createdAt: profile.created_at ? { seconds: Math.floor(new Date(profile.created_at).getTime() / 1000) } : { seconds: 0 },
+            lastActive: lastSignInMap.get(profile.id)
+              ? Math.floor(new Date(lastSignInMap.get(profile.id) as string).getTime() / 1000)
+              : (profile.created_at ? Math.floor(new Date(profile.created_at).getTime() / 1000) : null)
           };
         });
 
         return res.status(200).json({ users: mergedUsers });
+      }
+
+      case 'poll-daily': {
+        if (req.method !== 'GET') return res.status(405).json({ error: 'Method Not Allowed' });
+
+        const daysParam = parseInt(String(req.query?.days || '30'), 10);
+        const days = Number.isNaN(daysParam) ? 30 : Math.min(Math.max(daysParam, 1), 365);
+
+        const sinceIso = new Date(Date.now() - (days - 1) * 24 * 3600 * 1000).toISOString();
+        const { data: rows, error } = await supabaseAdmin
+          .from('poll_questions')
+          .select('created_at')
+          .gte('created_at', sinceIso);
+
+        if (error) throw error;
+
+        // Count rows per UTC day
+        const counts = new Map<string, number>();
+        (rows || []).forEach((row: any) => {
+          if (!row || !row.created_at) return;
+          const key = new Date(row.created_at).toISOString().slice(0, 10);
+          counts.set(key, (counts.get(key) || 0) + 1);
+        });
+
+        // Zero-fill every day in the range so the chart has no gaps
+        const daily: { date: string; count: number }[] = [];
+        for (let i = days - 1; i >= 0; i--) {
+          const key = new Date(Date.now() - i * 24 * 3600 * 1000).toISOString().slice(0, 10);
+          daily.push({ date: key, count: counts.get(key) || 0 });
+        }
+
+        return res.status(200).json({ days: daily });
       }
 
       case 'create-user': {
@@ -201,8 +249,6 @@ export default async function handler(req: any, res: any) {
 
         const permObj = {
           id: createdUser.id,
-          polls: (permissions || []).includes('polls'),
-          drafts: (permissions || []).includes('drafts'),
           ocr: (permissions || []).includes('ocr'),
           suffix_edit: (permissions || []).includes('suffix-edit'),
           rapid_fire: (permissions || []).includes('rapid-fire'),
@@ -288,8 +334,6 @@ export default async function handler(req: any, res: any) {
 
         const permObj = {
           id: userId,
-          polls: (permissions || []).includes('polls'),
-          drafts: (permissions || []).includes('drafts'),
           ocr: (permissions || []).includes('ocr'),
           suffix_edit: (permissions || []).includes('suffix-edit'),
           rapid_fire: (permissions || []).includes('rapid-fire'),
@@ -304,6 +348,31 @@ export default async function handler(req: any, res: any) {
         }
 
         return res.status(200).json({ success: true });
+      }
+
+      case 'save-config': {
+        if (req.method !== 'POST') return res.status(405).json({ error: 'Method Not Allowed' });
+        const { key, value } = req.body || {};
+        if (!key) {
+          return res.status(400).json({ error: "Key is required." });
+        }
+
+        const { data, error } = await supabaseAdmin
+          .from('system_config')
+          .upsert({
+            key,
+            updated_by: value?.updated_by || 'Admin',
+            default_suffix: value?.default_suffix ?? '',
+            updated_at: new Date().toISOString()
+          }, { onConflict: 'key' })
+          .select();
+
+        if (error) {
+          console.error("Supabase upsert error in api/admin save-config:", error);
+          return res.status(400).json({ error: error.message });
+        }
+
+        return res.status(200).json({ success: true, data });
       }
 
       default: {

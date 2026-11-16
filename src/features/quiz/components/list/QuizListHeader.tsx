@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { Wand2, Send } from 'lucide-react';
 
 interface QuizListHeaderProps {
@@ -8,52 +9,56 @@ interface QuizListHeaderProps {
   sentLabel?: string;
   sentValue?: number;
   showGeneratedStat?: boolean;
-  children?: React.ReactNode;
+  countLabel?: string;
+  countLink?: string;
 }
 
-export default function QuizListHeader({ 
-  totalQuestions, 
-  stats, 
+export default function QuizListHeader({
+  totalQuestions,
+  stats,
   title = "Generated Quizzes",
   sentLabel = "Sent",
   sentValue,
   showGeneratedStat = true,
-  children 
+  countLabel,
+  countLink = "/polls"
 }: QuizListHeaderProps) {
   return (
-    <div className="mb-6 space-y-4">
-      <h2 className="text-xl font-bold flex items-center gap-2 text-slate-800">
-        {title}
-        <span className="bg-gradient-to-r from-blue-100 to-indigo-100 text-blue-700 text-xs py-1 px-2.5 rounded-full font-semibold shadow-sm">
-          {totalQuestions}
-        </span>
-      </h2>
-      
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-        <div className="flex flex-wrap items-center gap-3 text-slate-500 font-medium">
-          {showGeneratedStat && (
-            <div className="flex items-center gap-2 border border-slate-200 px-2.5 py-1.5 rounded-xl bg-white shadow-sm flex-1 sm:flex-none min-w-[110px]">
-              <div className="bg-indigo-50 p-1.5 rounded-lg">
-                <Wand2 className="w-3.5 h-3.5 lg:w-4 lg:h-4 text-indigo-600" />
-              </div>
-              <div className="flex flex-col">
-                <span className="text-[9px] lg:text-[11px] uppercase tracking-wider text-slate-400 font-bold leading-none mb-1">Generated</span>
-                <span className="text-slate-700 font-bold text-xs lg:text-sm leading-none">{stats.generated}</span>
-              </div>
+    <div className="space-y-3">
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="text-base lg:text-lg font-black text-slate-900 tracking-tight">{title}</h2>
+        <Link
+          to={countLink}
+          className="text-xs font-bold text-blue-600 hover:text-blue-700 hover:underline underline-offset-2 transition-colors shrink-0"
+        >
+          {countLabel ?? `${totalQuestions} Quizzes`}
+        </Link>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        {showGeneratedStat && (
+          <div className="bg-white border border-slate-200 rounded-2xl px-3 py-2.5 shadow-sm">
+            <div className="flex items-center gap-2">
+              <span className="p-1 rounded-lg bg-violet-100">
+                <Wand2 className="w-3.5 h-3.5 text-violet-600" />
+              </span>
+              <span className="text-[10px] lg:text-[11px] font-bold uppercase tracking-wider text-slate-400">Generated</span>
             </div>
-          )}
-          <div className="flex items-center gap-2 border border-slate-200 px-2.5 py-1.5 rounded-xl bg-white shadow-sm flex-1 sm:flex-none min-w-[110px]">
-            <div className="bg-green-50 p-1.5 rounded-lg">
-              <Send className="w-3.5 h-3.5 lg:w-4 lg:h-4 text-green-600" />
-            </div>
-            <div className="flex flex-col">
-              <span className="text-[9px] lg:text-[11px] uppercase tracking-wider text-slate-400 font-bold leading-none mb-1">{sentLabel}</span>
-              <span className="text-slate-700 font-bold text-xs lg:text-sm leading-none">{sentValue ?? stats.sent}</span>
-            </div>
+            <p className="mt-1.5 text-lg lg:text-xl font-black text-slate-900 tabular-nums leading-none">
+              {stats.generated.toLocaleString()}
+            </p>
           </div>
-        </div>
-        <div className="w-full lg:w-auto lg:min-w-[400px]">
-          {children}
+        )}
+        <div className="bg-white border border-slate-200 rounded-2xl px-3 py-2.5 shadow-sm">
+          <div className="flex items-center gap-2">
+            <span className="p-1 rounded-lg bg-emerald-100">
+              <Send className="w-3.5 h-3.5 text-emerald-600" />
+            </span>
+            <span className="text-[10px] lg:text-[11px] font-bold uppercase tracking-wider text-slate-400">{sentLabel}</span>
+          </div>
+          <p className="mt-1.5 text-lg lg:text-xl font-black text-slate-900 tabular-nums leading-none">
+            {(sentValue ?? stats.sent).toLocaleString()}
+          </p>
         </div>
       </div>
     </div>

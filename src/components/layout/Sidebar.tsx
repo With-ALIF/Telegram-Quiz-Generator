@@ -8,7 +8,6 @@ import {
   Clock, 
   CreditCard, 
   Receipt, 
-  Info, 
   UserCircle,
   BarChart3,
   Shield,
@@ -17,7 +16,6 @@ import {
   Camera,
   FileText,
   CheckSquare,
-  Layout,
   Zap,
   LogOut
 } from 'lucide-react';
@@ -77,15 +75,14 @@ export const Sidebar: React.FC = () => {
           <>
             <NavItem to="/system-stats" icon={BarChart3} label="Dashboard" />
             <NavItem to="/admin" icon={Shield} label="Users Panel" />
-            <NavItem to="/admin/features" icon={Layout} label="Features" />
             <NavItem to="/admin/suffix" icon={Settings} label="Suffix Settings" />
           </>
         ) : (
           <>
             <NavItem to="/" icon={Home} label="Home" />
+            <NavItem to="/drafts" icon={FileText} label="Drafts" />
+            <NavItem to="/polls" icon={CheckSquare} label="Polls" />
             {hasPermission('ocr') && <NavItem to="/ocr" icon={Camera} label="OCR Scan" />}
-            {hasPermission('drafts') && <NavItem to="/drafts" icon={FileText} label="Drafts" />}
-            {hasPermission('polls') && <NavItem to="/polls" icon={CheckSquare} label="Polls" />}
             {hasPermission('rapid-fire') && <NavItem to="/rapid-fire" icon={Zap} label="Rapid Fire" />}
           </>
         )}
@@ -93,11 +90,10 @@ export const Sidebar: React.FC = () => {
 
       {/* Footer Navigation */}
       <div className="mt-auto pt-4 border-t border-gray-100 space-y-1">
-        <NavItem to="/about" icon={Info} label="About" />
         {user && (
           <>
-            <NavItem to="/profile" icon={UserCircle} label="Profile" />
-            <NavItem to="/settings" icon={Settings} label="Settings" />
+            {!isAdmin && <NavItem to="/profile" icon={UserCircle} label="Profile" />}
+            {!isAdmin && <NavItem to="/settings" icon={Settings} label="Settings" />}
             <button 
               onClick={logout}
               className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-gray-500 hover:bg-red-50 hover:text-red-600 transition-all"

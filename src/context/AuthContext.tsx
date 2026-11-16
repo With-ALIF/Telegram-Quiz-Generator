@@ -88,16 +88,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           .eq('user_id', user.id)
           .maybeSingle();
         
+        const googlePhoto = user.user_metadata?.avatar_url || user.user_metadata?.picture || '';
+        const savedPhoto = photoData?.photo_url ? normalizeGithubUrl(photoData.photo_url) : '';
+        const finalPhoto = savedPhoto || googlePhoto;
+
         if (profileData) {
-          // Replace profile photo_url with the one from user_photos and normalize
-          profileData.photo_url = photoData ? normalizeGithubUrl(photoData.photo_url || '') : '';
+          // Replace profile photo_url with user_photos or fallback to Google photo
+          profileData.photo_url = finalPhoto;
           
           const perms = [];
           if (profileData.profile_permissions) {
             const p = Array.isArray(profileData.profile_permissions) ? profileData.profile_permissions[0] : profileData.profile_permissions;
             if (p) {
-              if (p.polls) perms.push('polls');
-              if (p.drafts) perms.push('drafts');
               if (p.ocr) perms.push('ocr');
               if (p.suffix_edit) perms.push('suffix-edit');
               if (p.rapid_fire || p['rapid-fire']) perms.push('rapid-fire');
@@ -107,6 +109,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const enrichedProfile = { ...profileData, permissions: userPerms };
           localStorage.setItem(`profile_${user.id}`, JSON.stringify(enrichedProfile));
           setProfile(enrichedProfile);
+        }
+
+        // Auto-save Google avatar into user_photos if DB doesn't have it yet
+        if (googlePhoto && (!photoData || !photoData.photo_url)) {
+          await supabase
+            .from('user_photos')
+            .upsert({
+              user_id: user.id,
+              photo_url: googlePhoto,
+              updated_at: new Date().toISOString()
+            }, { onConflict: 'user_id' });
         }
       } catch (profileErr) {
         console.error("Error setting up session profile:", profileErr);
@@ -149,8 +162,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             if (payload.new) {
               const p = payload.new as any;
               const perms = [];
-              if (p.polls) perms.push('polls');
-              if (p.drafts) perms.push('drafts');
               if (p.ocr) perms.push('ocr');
               if (p.suffix_edit) perms.push('suffix-edit');
               if (p.rapid_fire || p['rapid-fire']) perms.push('rapid-fire');
@@ -204,9 +215,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } else {
             try {
                 const parsed = JSON.parse(cached);
-                if (!parsed.default_suffix || parsed.default_suffix.trim() === '') {
-                    parsed.default_suffix = fallbackConfig.default_suffix;
+                if (parsed) {
                     setAppConfig(parsed);
+                } else {
+                    setAppConfig(fallbackConfig);
                 }
             } catch (e) {
                 setAppConfig(fallbackConfig);
@@ -217,6 +229,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     fetchConfig();
     
+    // Listen to local update events (e.g. from AdminSuffixSettings)
+    const onLocalConfigUpdate = (e: any) => {
+      if (e?.detail) {
+        setAppConfig(e.detail);
+      }
+    };
+    if (typeof window !== 'undefined') {
+      window.addEventListener('app_config_updated', onLocalConfigUpdate);
+    }
+
     // Poll for updates every 30 seconds as real-time fallback
     const intervalId = setInterval(fetchConfig, 30000);
 
@@ -243,6 +265,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     return () => {
       clearInterval(intervalId);
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('app_config_updated', onLocalConfigUpdate);
+      }
       if (configSubscription) {
         supabase.removeChannel(configSubscription);
       }
@@ -259,10 +284,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       email: user.email,
       ...user,
       ...profile,
-      photoURL: normalizeGithubUrl(profile?.photo_url || user?.user_metadata?.avatar_url || ''),
+      photoURL: normalizeGithubUrl(profile?.photo_url || user?.user_metadata?.avatar_url || user?.user_metadata?.picture || ''),
       displayName: profile?.display_name || user?.user_metadata?.full_name || user?.user_metadata?.display_name || '',
     };
-  }, [user?.id, profile]);
+  }, [user, profile]);
 
   const loginWithEmail = async (email: string, password: string) => {
     return await signInWithEmail(email, password);

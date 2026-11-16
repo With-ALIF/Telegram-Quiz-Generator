@@ -39,12 +39,22 @@ export default function QuizInput({
   const [mode, setMode] = useState<'ai' | 'manual'>('ai');
   const [showTutorial, setShowTutorial] = useState(false);
   const canGenerate = isGenerating || (!(inputText.trim() || lastInputText.trim()) || questionCount < 1);
-  
+
+  const tutorialButton = (
+    <button 
+      onClick={() => setShowTutorial(true)}
+      className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 bg-red-50/50 hover:bg-red-50 text-red-600 border border-red-100 rounded-full font-bold text-[10px] sm:text-xs uppercase tracking-wider transition-all shadow-sm active:scale-95 whitespace-nowrap cursor-pointer"
+    >
+      <PlayCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+      Watch Tutorial
+    </button>
+  );
+
   return (
-    <div className={`space-y-6 ${className}`}>
-      <div className="p-4 sm:p-8 border border-slate-200 rounded-2xl sm:rounded-3xl lg:sticky lg:top-24">
+    <div className={`space-y-4 ${className}`}>
+      <div className="p-4 sm:p-5 border border-slate-200 rounded-2xl lg:sticky lg:top-24">
         
-        <div className="mb-6">
+        <div className="mb-4">
           <div className="flex bg-slate-50 p-1 rounded-full border border-slate-200 overflow-x-auto no-scrollbar min-w-0">
             <button
               onClick={() => setMode('ai')}
@@ -57,15 +67,6 @@ export default function QuizInput({
               className={`flex-1 sm:px-8 py-1.5 sm:py-2 px-3 rounded-full text-xs sm:text-sm font-semibold transition-all whitespace-nowrap ${mode === 'manual' ? 'bg-[#2C4B9B] text-white shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
             >
               Manual
-            </button>
-          </div>
-          <div className="flex justify-center mt-3">
-            <button 
-              onClick={() => setShowTutorial(true)}
-              className="flex items-center gap-2 px-4 py-1.5 bg-red-50/50 hover:bg-red-50 text-red-600 border border-red-100 rounded-full font-bold text-[10px] sm:text-xs uppercase tracking-wider transition-all shadow-sm active:scale-95"
-            >
-              <PlayCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-              Watch Tutorial
             </button>
           </div>
         </div>
@@ -82,9 +83,15 @@ export default function QuizInput({
             canGenerate={canGenerate}
             preserveBoardInfo={preserveBoardInfo}
             setPreserveBoardInfo={setPreserveBoardInfo}
+            headerExtra={tutorialButton}
           />
         ) : (
-          <ManualQuizInput onAdd={addManualQuestion} />
+          <>
+            <div className="flex justify-end mb-3">
+              {tutorialButton}
+            </div>
+            <ManualQuizInput onAdd={addManualQuestion} />
+          </>
         )}
       </div>
 

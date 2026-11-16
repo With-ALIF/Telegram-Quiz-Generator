@@ -35,8 +35,7 @@ export default async function handler(req: any, res: any) {
       });
     }
 
-    // Always ensure a default suffix if the DB returns empty string
-    if (!data.default_suffix || data.default_suffix.trim() === '') {
+    if (data.default_suffix === null || data.default_suffix === undefined) {
         data.default_suffix = '{{  join: https://t.me/SOT_Academy}}';
     }
 

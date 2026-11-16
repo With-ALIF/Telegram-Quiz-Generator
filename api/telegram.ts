@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import { IncomingMessage, ServerResponse } from "http";
 
 function getTelegramBotToken(req: any): string | null {

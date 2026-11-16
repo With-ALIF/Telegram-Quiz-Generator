@@ -31,6 +31,10 @@ export const createUserProfile = async (user: User) => {
 
     profileCheckCache.add(user.id);
     
+    // Extract avatar from Google OAuth metadata (avatar_url or picture)
+    const avatarUrl = user.user_metadata?.avatar_url || user.user_metadata?.picture || '';
+    const displayName = user.user_metadata?.full_name || user.user_metadata?.name || user.user_metadata?.display_name || '';
+
     if (!profile) {
       console.log("Creating new user profile...");
       const defaultRole = ADMIN_EMAILS.includes(user.email || '') ? 'admin' : 'user';
@@ -40,7 +44,7 @@ export const createUserProfile = async (user: User) => {
         .upsert({
           id: user.id,
           email: user.email,
-          display_name: user.user_metadata?.full_name || '',
+          display_name: displayName,
           role: defaultRole,
         }, { onConflict: 'id' });
 
@@ -48,7 +52,6 @@ export const createUserProfile = async (user: User) => {
       console.log("User profile created successfully with role:", defaultRole);
 
       // Save avatar_url to user_photos
-      const avatarUrl = user.user_metadata?.avatar_url || '';
       if (avatarUrl) {
         await supabase
           .from('user_photos')
@@ -61,6 +64,25 @@ export const createUserProfile = async (user: User) => {
     } else {
       console.log("User profile already exists");
       localStorage.setItem(`profile_${user.id}`, JSON.stringify(profile));
+
+      // If user signed in with Google and user_photos doesn't have an avatar yet, backfill it
+      if (avatarUrl) {
+        const { data: existingPhoto } = await supabase
+          .from('user_photos')
+          .select('photo_url')
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+        if (!existingPhoto || !existingPhoto.photo_url) {
+          await supabase
+            .from('user_photos')
+            .upsert({
+              user_id: user.id,
+              photo_url: avatarUrl,
+              updated_at: new Date().toISOString()
+            }, { onConflict: 'user_id' });
+        }
+      }
     }
   } catch (error: any) {
     console.error("Error in createUserProfile:", error);
