@@ -77,7 +77,9 @@ export default async function handler(req: any, res: any) {
       return res.status(403).json({ error: "Access denied." });
     }
 
-    const supabaseAdmin = getSupabaseAdmin();
+    const authHeader = req.headers['authorization'] || req.headers['Authorization'] || req.headers.authorization;
+    const token = (authHeader && authHeader.startsWith('Bearer ')) ? authHeader.substring(7).trim() : '';
+    const supabaseAdmin = getSupabaseAdmin(token);
 
     switch (action) {
       case 'save-config': {

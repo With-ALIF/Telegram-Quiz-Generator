@@ -10,9 +10,26 @@ import quizHandler from "./api/quiz.ts";
 
 dotenv.config({ override: true });
 
-const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || '';
-const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY || '';
-const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+const SUPABASE_URL = (process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || '').trim().replace(/^["']|["']$/g, '');
+const SUPABASE_ANON_KEY = (process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY || '').trim().replace(/^["']|["']$/g, '');
+const SUPABASE_SERVICE_ROLE_KEY = (
+  process.env.SUPABASE_SERVICE_ROLE_KEY ||
+  process.env.VITE_SUPABASE_SERVICE_ROLE_KEY ||
+  process.env.SERVICE_ROLE_KEY ||
+  process.env.SUPABASE_SERVICE_KEY ||
+  process.env.SUPABASE_SECRET_KEY ||
+  ''
+).trim().replace(/^["']|["']$/g, '');
+
+function getAdminClient(token?: string) {
+  const serviceKey = SUPABASE_SERVICE_ROLE_KEY || SUPABASE_ANON_KEY;
+  return createClient(SUPABASE_URL, serviceKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+    global: {
+      headers: (!SUPABASE_SERVICE_ROLE_KEY && token) ? { Authorization: `Bearer ${token}` } : {}
+    }
+  });
+}
 
 async function initSupabaseAdmin() {
   if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
@@ -81,7 +98,7 @@ async function verifyAdmin(req: express.Request): Promise<boolean> {
       return true;
     }
 
-    const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    const supabaseAdmin = getAdminClient(token);
     const { data: profile } = await supabaseAdmin
       .from('profiles')
       .select('role')
@@ -628,11 +645,11 @@ async function startServer() {
       }
 
       const authHeader = req.headers['authorization'] || req.headers['Authorization'];
-      const token = authHeader ? (authHeader as string).substring(7).trim() : '';
+      const token = (typeof authHeader === 'string' && authHeader.startsWith('Bearer '))
+        ? authHeader.substring(7).trim()
+        : '';
 
-      const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
-        auth: { autoRefreshToken: false, persistSession: false }
-      });
+      const supabaseAdmin = getAdminClient(token);
 
       const permObj = {
         id: userId,
@@ -851,9 +868,12 @@ async function startServer() {
          return res.status(403).json({ error: "Access denied." });
        }
  
-       const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
-         auth: { autoRefreshToken: false, persistSession: false }
-       });
+       const authHeader = req.headers['authorization'] || req.headers['Authorization'];
+       const token = (typeof authHeader === 'string' && authHeader.startsWith('Bearer '))
+         ? authHeader.substring(7).trim()
+         : '';
+
+       const supabaseAdmin = getAdminClient(token);
  
        // Fetch profiles from DB
        const { data: profiles, error: profileError } = await supabaseAdmin
@@ -942,9 +962,12 @@ async function startServer() {
       }
 
       try {
-        const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
-          auth: { autoRefreshToken: false, persistSession: false }
-        });
+        const authHeader = req.headers['authorization'] || req.headers['Authorization'];
+        const token = (typeof authHeader === 'string' && authHeader.startsWith('Bearer '))
+          ? authHeader.substring(7).trim()
+          : '';
+
+        const supabaseAdmin = getAdminClient(token);
 
         const sinceIso = new Date(Date.now() - (days - 1) * 24 * 3600 * 1000).toISOString();
         let { data: rows, error } = await supabaseAdmin
@@ -1000,17 +1023,11 @@ async function startServer() {
       }
 
       const authHeader = req.headers['authorization'] || req.headers['Authorization'];
-      const token = authHeader ? (authHeader as string).substring(7).trim() : '';
+      const token = (typeof authHeader === 'string' && authHeader.startsWith('Bearer '))
+        ? authHeader.substring(7).trim()
+        : '';
 
-      // Use SERVICE_ROLE_KEY if available to bypass RLS (since we already verified admin via verifyAdmin), 
-      // otherwise fallback to ANON_KEY + User Token.
-      const useServiceRole = !!SUPABASE_SERVICE_ROLE_KEY;
-      const clientKey = useServiceRole ? SUPABASE_SERVICE_ROLE_KEY : SUPABASE_ANON_KEY;
-      
-      const supabaseAdmin = createClient(SUPABASE_URL, clientKey, {
-        auth: { autoRefreshToken: false, persistSession: false },
-        global: { headers: (!useServiceRole && token) ? { Authorization: `Bearer ${token}` } : {} }
-      });
+      const supabaseAdmin = getAdminClient(token);
 
       const { data, error } = await supabaseAdmin
         .from('system_config')
