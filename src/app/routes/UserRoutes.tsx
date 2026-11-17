@@ -24,7 +24,7 @@ export const useUserRoutes = ({ appState }: UserRoutesProps) => {
         element={
           <ProtectedRoute>
             {isAdmin ? (
-              <Navigate to="/system-stats" replace />
+              <Navigate to="/dashboard" replace />
             ) : (
               <ProfilePage />
             )}
@@ -36,7 +36,7 @@ export const useUserRoutes = ({ appState }: UserRoutesProps) => {
         element={
           <ProtectedRoute>
             {isAdmin ? (
-              <Navigate to="/system-stats" replace />
+              <Navigate to="/dashboard" replace />
             ) : (
               <SettingsPage
                 settings={settings.settings}

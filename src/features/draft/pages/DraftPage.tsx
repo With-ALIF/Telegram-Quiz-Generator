@@ -5,7 +5,7 @@ import DraftList from '../components/DraftList';
 import DraftToolbar from '../components/DraftToolbar';
 import DraftDetailsModal from '../components/DraftDetailsModal';
 import DraftCsvExportModal from '../components/DraftCsvExportModal';
-import { useAppInit } from '../../../app/useAppInit';
+import { useApp } from '../../../context/AppContext';
 import DeleteConfirmModal from '../../../components/DeleteConfirmModal';
 import { AnimatePresence, motion } from 'motion/react';
 import { AlertCircle, X, Filter } from 'lucide-react';
@@ -13,7 +13,7 @@ import { QUIZ_TOPICS } from '../../quiz/constants';
 
 export default function DraftPage() {
   const { drafts, deleteDraft, sendDraftToTelegram, moveManyToDraft } = useDrafts();
-  const { telegram } = useAppInit();
+  const { telegram } = useApp();
   
   const [filterTopic, setFilterTopic] = useState('all');
   const filteredDrafts = filterTopic === 'all' 

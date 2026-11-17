@@ -14,7 +14,7 @@ export default function App() {
   useEffect(() => {
     if (!loading && user && isAdmin) {
       if (location.pathname === '/auth' || location.pathname === '/') {
-        navigate('/system-stats');
+        navigate('/dashboard');
       }
     }
   }, [user, isAdmin, loading, navigate, location.pathname]);

@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import { GoogleGenAI, Type } from "@google/genai";
 import { getSupabaseAdmin } from "./supabaseClient.js";
 
@@ -7,16 +8,22 @@ const supabaseAdmin = getSupabaseAdmin();
 let aiClients: GoogleGenAI[] = [];
 let currentClientIndex = 0;
 
-// Module-level fallback model lists that auto-heal if a model gets exhausted (429/503)
-let activeTextModels = ["gemini-3.5-flash", "gemini-3.1-flash-lite", "gemini-flash-latest"];
-let activeImageModels = ["gemini-3.5-flash", "gemini-3.1-flash-lite", "gemini-flash-latest"];
+let activeTextModels = ["gemini-3.8-flash", "gemini-3.5-flash-lite", "gemini-3.5-flash"];
+let activeImageModels = ["gemini-3.8-flash", "gemini-3.5-flash-lite", "gemini-3.5-flash"];
 
-function demoteModel(modelList: string[], modelName: string, serviceName: string) {
+function demoteModel(modelList: string[], modelName: string, serviceName: string, isPermanent = false) {
   const index = modelList.indexOf(modelName);
-  if (index !== -1 && modelList.length > 1) {
-    modelList.splice(index, 1);
-    modelList.push(modelName);
-    console.warn(`[${serviceName}] Demoted model ${modelName} due to temporary failure. New order: ${modelList.join(', ')}`);
+  if (index !== -1) {
+    if (isPermanent) {
+      if (modelList.length > 1) {
+        modelList.splice(index, 1);
+        console.warn(`[${serviceName}] Permanently removed unsupported model ${modelName}. Remaining models: ${modelList.join(', ')}`);
+      }
+    } else if (modelList.length > 1) {
+      modelList.splice(index, 1);
+      modelList.push(modelName);
+      console.warn(`[${serviceName}] Demoted model ${modelName} due to temporary failure. New order: ${modelList.join(', ')}`);
+    }
   }
 }
 
@@ -52,21 +59,10 @@ function getAIClients(): GoogleGenAI[] {
     
     if (keys.length === 0) {
       console.warn("No GEMINI_API_KEY variables found in server environment. Falling back to default initialization.");
-      aiClients = [new GoogleGenAI({
-        httpOptions: {
-          headers: {
-            'User-Agent': 'aistudio-build',
-          }
-        }
-      })];
+      aiClients = [new GoogleGenAI({})];
     } else {
       aiClients = keys.map(key => new GoogleGenAI({
-        apiKey: key,
-        httpOptions: {
-          headers: {
-            'User-Agent': 'aistudio-build',
-          }
-        }
+        apiKey: key
       }));
     }
   }
@@ -179,27 +175,35 @@ ${text}`,
       return JSON.parse(jsonStr);
     } catch (error: any) {
       const errorMsg = typeof error === 'object' ? (error?.message || JSON.stringify(error)) : String(error);
-      const isNotFound = errorMsg.includes('404') || errorMsg.includes('not found') || errorMsg.includes('NOT_FOUND');
+      const isNotFound = errorMsg.includes('404') || errorMsg.includes('not found') || errorMsg.includes('NOT_FOUND') || errorMsg.includes('no longer available');
       const isRateLimit = errorMsg.includes('429') || errorMsg.includes('Quota exceeded') || errorMsg.includes('RESOURCE_EXHAUSTED');
       const isForbidden = errorMsg.includes('403') || errorMsg.includes('leaked') || errorMsg.includes('PERMISSION_DENIED');
       const isJsonError = errorMsg.includes('json') || errorMsg.includes('Unexpected end of JSON');
       const isServiceUnavailable = errorMsg.includes('503') || errorMsg.includes('UNAVAILABLE') || errorMsg.includes('temporary') || errorMsg.includes('high demand') || errorMsg.includes('Service Unavailable');
       
-      if (isNotFound || isRateLimit || isServiceUnavailable) {
-        demoteModel(activeTextModels, currentModel, "Quiz API Text");
+      if (isNotFound) {
+        demoteModel(activeTextModels, currentModel, "Quiz API Text", true);
+      } else if (isRateLimit || isServiceUnavailable) {
+        demoteModel(activeTextModels, currentModel, "Quiz API Text", false);
       }
 
       if (attempt < retries) {
         console.warn(`[Quiz API] Attempt ${attempt} with model ${currentModel} failed (will retry):`, error.message || error);
         rotateKey();
         modelAttempt++;
-        const waitTime = Math.pow(1.3, attempt % 3) * 400;
+        const waitTime = isServiceUnavailable ? 1200 : Math.pow(1.3, attempt % 3) * 400;
         await delay(waitTime);
         continue;
       }
       
       console.error(`[Quiz API] Text generation failed after all attempts. Final error on ${currentModel}:`, error.message || error);
 
+      if (isForbidden || errorMsg.includes('API_KEY_INVALID') || errorMsg.includes('API key not valid')) {
+        throw new Error("আপনার Gemini API Key টি সঠিক নয় বা ব্লক হয়েছে। দয়া করে .env ফাইলে একটি সচল GEMINI_API_KEY দিন।");
+      }
+      if (isRateLimit) {
+        throw new Error("Gemini API কোটা বা রেট লিমিট শেষ হয়েছে (429 Quota Exceeded)। অনুগ্রহ করে কিছুক্ষণ পর চেষ্টা করুন অথবা নতুন API Key ব্যবহার করুন।");
+      }
       if (isServiceUnavailable) {
         throw new Error("Gemini সার্ভারে সাময়িক চাপ রয়েছে (503 High Demand)। কয়েক সেকেন্ড পর পুনরায় চেষ্টা করুন।");
       }
@@ -291,27 +295,35 @@ You MUST output a 0-indexed correctOptionIndex (e.g., 0, 1, 2, 3).`
       return JSON.parse(jsonStr);
     } catch (error: any) {
       const errorMsg = typeof error === 'object' ? (error?.message || JSON.stringify(error)) : String(error);
-      const isNotFound = errorMsg.includes('404') || errorMsg.includes('not found') || errorMsg.includes('NOT_FOUND');
+      const isNotFound = errorMsg.includes('404') || errorMsg.includes('not found') || errorMsg.includes('NOT_FOUND') || errorMsg.includes('no longer available');
       const isRateLimit = errorMsg.includes('429') || errorMsg.includes('Quota exceeded') || errorMsg.includes('RESOURCE_EXHAUSTED');
       const isForbidden = errorMsg.includes('403') || errorMsg.includes('leaked') || errorMsg.includes('PERMISSION_DENIED');
       const isJsonError = errorMsg.includes('json') || errorMsg.includes('Unexpected end of JSON');
       const isServiceUnavailable = errorMsg.includes('503') || errorMsg.includes('UNAVAILABLE') || errorMsg.includes('temporary') || errorMsg.includes('high demand') || errorMsg.includes('Service Unavailable');
       
-      if (isNotFound || isRateLimit || isServiceUnavailable) {
-        demoteModel(activeImageModels, currentModel, "Quiz API Image");
+      if (isNotFound) {
+        demoteModel(activeImageModels, currentModel, "Quiz API Image", true);
+      } else if (isRateLimit || isServiceUnavailable) {
+        demoteModel(activeImageModels, currentModel, "Quiz API Image", false);
       }
 
       if (attempt < retries) {
         console.warn(`[Quiz API] Image Attempt ${attempt} with model ${currentModel} failed (will retry):`, error.message || error);
         rotateKey();
         modelAttempt++;
-        const waitTime = Math.pow(1.3, attempt % 3) * 400;
+        const waitTime = isServiceUnavailable ? 1200 : Math.pow(1.3, attempt % 3) * 400;
         await delay(waitTime);
         continue;
       }
       
       console.error(`[Quiz API] Image generation failed after all attempts. Final error on ${currentModel}:`, error.message || error);
 
+      if (isForbidden || errorMsg.includes('API_KEY_INVALID') || errorMsg.includes('API key not valid')) {
+        throw new Error("আপনার Gemini API Key টি সঠিক নয় বা ব্লক হয়েছে। দয়া করে .env ফাইলে একটি সচল GEMINI_API_KEY দিন।");
+      }
+      if (isRateLimit) {
+        throw new Error("Gemini API কোটা বা রেট লিমিট শেষ হয়েছে (429 Quota Exceeded)। অনুগ্রহ করে কিছুক্ষণ পর চেষ্টা করুন অথবা নতুন API Key ব্যবহার করুন।");
+      }
       if (isServiceUnavailable) {
         throw new Error("Gemini সার্ভারে সাময়িক চাপ রয়েছে (503 High Demand)। কয়েক সেকেন্ড পর পুনরায় চেষ্টা করুন।");
       }
@@ -350,6 +362,15 @@ export default async function handler(req: any, res: any) {
     }
   } catch (error: any) {
     console.error("[Quiz API Error]:", error);
-    return res.status(500).json({ error: error.message || 'Internal Server Error' });
+    let errMsg = error.message || 'Internal Server Error';
+    try {
+      if (typeof errMsg === 'string' && errMsg.startsWith('{') && errMsg.includes('"message"')) {
+        const parsed = JSON.parse(errMsg);
+        if (parsed.error?.message) {
+          errMsg = parsed.error.message;
+        }
+      }
+    } catch {}
+    return res.status(500).json({ error: errMsg });
   }
 }

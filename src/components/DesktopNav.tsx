@@ -15,11 +15,11 @@ export default function DesktopNav({ user }: { user: any }) {
     <nav className="hidden md:flex items-center gap-6">
       {isAdmin && (
         <>
-          <NavLink to="/system-stats" className={linkClass}>
+          <NavLink to="/dashboard" className={linkClass}>
             <BarChart3 className="w-4 h-4" />
            Dashboard
           </NavLink>
-          <NavLink to="/admin" className={linkClass}>
+          <NavLink to="/user" className={linkClass}>
             <Shield className="w-4 h-4" />
             Users Panel
           </NavLink>

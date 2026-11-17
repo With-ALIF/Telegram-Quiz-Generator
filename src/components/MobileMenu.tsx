@@ -58,11 +58,11 @@ export default function MobileMenu({ user, profilePhoto, displayName, logout, to
       <div className="space-y-1">
         {isAdmin && (
           <>
-          <NavLink to="/system-stats" onClick={toggleMenu} className={linkClass}>
+          <NavLink to="/dashboard" onClick={toggleMenu} className={linkClass}>
               <BarChart3 className="w-5 h-5" />
              Dashboard
             </NavLink>
-            <NavLink to="/admin" onClick={toggleMenu} className={linkClass}>
+            <NavLink to="/user" onClick={toggleMenu} className={linkClass}>
               <Shield className="w-5 h-5" />
               User Panel
             </NavLink>

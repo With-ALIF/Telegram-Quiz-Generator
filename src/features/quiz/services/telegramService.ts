@@ -1,4 +1,5 @@
 import { QuizQuestion, TelegramSettings } from "../../../types";
+import { formatQuestionText, formatExplanationText } from "./telegram-poll/format";
 
 export async function getChatDetails(chatId: string, _botToken?: string) {
   const cleanChatId = chatId.trim();
@@ -68,25 +69,8 @@ export async function sendQuizToTelegram(
 
   const url = `/api/telegram/sendPoll`;
 
-  let finalQuestion = question.question;
-  if (settings.questionPrefix && settings.questionPrefix.trim() !== '') {
-    finalQuestion = `${settings.questionPrefix.trim()}\n${finalQuestion}`;
-  }
-
-  // Telegram poll question limit is 300 characters
-  if (finalQuestion.length > 300) {
-    finalQuestion = finalQuestion.substring(0, 297) + '...';
-  }
-
-  let finalExplanation = question.explanation || '';
-  if (settings.explanationSuffix && settings.explanationSuffix.trim() !== '') {
-    finalExplanation = `${finalExplanation}\n\n${settings.explanationSuffix.trim()}`;
-  }
-
-  // Telegram poll explanation limit is 200 characters
-  if (finalExplanation.length > 200) {
-    finalExplanation = finalExplanation.substring(0, 197) + '...';
-  }
+  const finalQuestion = formatQuestionText(question, settings);
+  const finalExplanation = formatExplanationText(question, settings);
 
   const payload: any = {
     chat_id: cleanChatId,

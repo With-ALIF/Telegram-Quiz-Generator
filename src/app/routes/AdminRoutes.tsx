@@ -1,5 +1,5 @@
 import React, { lazy } from 'react';
-import { Route } from 'react-router-dom';
+import { Route, Navigate } from 'react-router-dom';
 import ProtectedRoute from '../../components/ProtectedRoute';
 
 const AdminDashboard = lazy(() => import('../../features/admin/pages/AdminDashboard'));
@@ -14,7 +14,7 @@ export const useAdminRoutes = ({ isAdmin }: AdminRoutesProps) => {
   return (
     <>
       <Route 
-        path="/system-stats" 
+        path="/dashboard" 
         element={
           <ProtectedRoute>
             {isAdmin ? <AdminStats /> : <div className="p-8 text-center">Access Denied</div>}
@@ -30,13 +30,15 @@ export const useAdminRoutes = ({ isAdmin }: AdminRoutesProps) => {
         } 
       />
       <Route 
-        path="/admin" 
+        path="/user" 
         element={
           <ProtectedRoute>
             {isAdmin ? <AdminDashboard /> : <div className="p-8 text-center">Access Denied</div>}
           </ProtectedRoute>
         } 
       />
+      <Route path="/system-stats" element={<Navigate to="/dashboard" replace />} />
+      <Route path="/admin" element={<Navigate to="/user" replace />} />
     </>
   );
 };

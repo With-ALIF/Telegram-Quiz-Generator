@@ -30,7 +30,7 @@ interface NavItemProps {
 const NavItem: React.FC<NavItemProps> = ({ to, icon: Icon, label }) => (
   <NavLink 
     to={to}
-    end={to === '/' || to === '/admin'}
+    end={to === '/' || to === '/user'}
     className={({ isActive }) => `relative w-full flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all ${
       isActive 
         ? 'bg-blue-50 text-blue-600 shadow-sm shadow-blue-100/50' 
@@ -74,8 +74,8 @@ export const Sidebar: React.FC = () => {
       <nav className="flex-1 space-y-1 overflow-y-auto pr-2 custom-scrollbar">
         {isAdmin ? (
           <>
-            <NavItem to="/system-stats" icon={BarChart3} label="Dashboard" />
-            <NavItem to="/admin" icon={Shield} label="Users Panel" />
+            <NavItem to="/dashboard" icon={BarChart3} label="Dashboard" />
+            <NavItem to="/user" icon={Shield} label="Users Panel" />
             <NavItem to="/admin/suffix" icon={Settings} label="Suffix Settings" />
           </>
         ) : (

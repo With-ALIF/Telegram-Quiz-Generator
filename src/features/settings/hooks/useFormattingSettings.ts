@@ -47,6 +47,11 @@ export function useFormattingSettings(settings: TelegramSettings, setSettings: (
     if (selectedChannelIdForFormatting === 'global') {
       updatedSettings.explanationSuffix = item.content;
       updatedSettings.activeSuffixId = item.id;
+      updatedSettings.channels = (settings.channels || []).map(c => 
+        (!c.activeSuffixId || c.activeSuffixId === settings.activeSuffixId)
+          ? { ...c, activeSuffixId: item.id }
+          : c
+      );
     } else {
       updatedSettings.channels = (settings.channels || []).map(c => 
         c.id === selectedChannelIdForFormatting ? { ...c, activeSuffixId: item.id } : c
@@ -123,7 +128,12 @@ export function useFormattingSettings(settings: TelegramSettings, setSettings: (
       setSettings({
         ...settings,
         explanationSuffix: item ? item.content : '',
-        activeSuffixId: item ? item.id : undefined
+        activeSuffixId: item ? item.id : undefined,
+        channels: (settings.channels || []).map(c => 
+          (!c.activeSuffixId || c.activeSuffixId === settings.activeSuffixId)
+            ? { ...c, activeSuffixId: item ? item.id : undefined }
+            : c
+        )
       });
     } else {
       setSettings({

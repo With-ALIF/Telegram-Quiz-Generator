@@ -54,7 +54,7 @@ export default function RecentActivity({ events }: RecentActivityProps) {
       </div>
 
       <button
-        onClick={() => navigate('/admin')}
+        onClick={() => navigate('/user')}
         className="mt-4 w-full h-8 rounded-lg bg-[#f8fafc] border border-[#eef2f7] text-[#475569] text-[11px] font-bold hover:bg-[#eef2f7] transition-colors cursor-pointer"
       >
         View all activity

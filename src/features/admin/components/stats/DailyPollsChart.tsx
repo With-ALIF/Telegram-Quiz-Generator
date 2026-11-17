@@ -1,5 +1,5 @@
-import React, { useCallback, useEffect, useState } from 'react';
-import { BarChart3 } from 'lucide-react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { BarChart3, Table as TableIcon } from 'lucide-react';
 import { fetchDailyPollCounts } from '../../services/adminService';
 
 interface DayCount {
@@ -16,7 +16,7 @@ const formatDay = (dateStr: string) =>
 const SKELETON_HEIGHTS = [40, 65, 30, 80, 55, 70, 45, 90, 35, 60, 75, 50, 85, 42];
 
 /**
- * Daily "polls created" bar chart for the Admin Dashboard.
+ * Daily "polls created" bar chart & table for the Admin Dashboard.
  * Data source: GET /api/admin/poll-daily (counts poll_questions.created_at per day).
  */
 export default function DailyPollsChart() {
@@ -24,6 +24,7 @@ export default function DailyPollsChart() {
   const [data, setData] = useState<DayCount[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<number | null>(null);
+  const [viewMode, setViewMode] = useState<'chart' | 'table'>('chart');
 
   const load = useCallback(async (range: number) => {
     setLoading(true);
@@ -56,6 +57,24 @@ export default function DailyPollsChart() {
     data && data.length > 1 ? formatDay(data[Math.floor(data.length / 2)].date) : '';
   const labelRight = data && data.length > 0 ? formatDay(data[data.length - 1].date) : '';
 
+  // Sort descending (newest dates first) for table view
+  const sortedTableData = useMemo(() => {
+    if (!data) return [];
+    return [...data].reverse();
+  }, [data]);
+
+  const isToday = (dateStr: string) => {
+    const d = new Date(`${dateStr}T00:00:00`);
+    const today = new Date();
+    return d.toDateString() === today.toDateString();
+  };
+
+  const isYesterday = (dateStr: string) => {
+    const d = new Date(`${dateStr}T00:00:00`);
+    const yest = new Date(Date.now() - 24 * 3600 * 1000);
+    return d.toDateString() === yest.toDateString();
+  };
+
   return (
     <div className="mb-6 rounded-[19px] border border-[#e8edf4] bg-white p-5 shadow-[0_3px_14px_rgba(15,23,42,0.06)] sm:p-6 lg:p-7">
       {/* Header */}
@@ -68,27 +87,66 @@ export default function DailyPollsChart() {
           <p className="mt-1 text-[12px] text-[#64748b]">{subtitle}</p>
         </div>
 
-        <div
-          className="flex gap-1 rounded-lg border border-[#e8edf4] bg-[#f8fafc] p-1"
-          role="group"
-          aria-label="Chart range"
-        >
-          {RANGES.map(range => (
+        <div className="flex flex-wrap items-center gap-2">
+          {/* View Mode Toggle: Graph vs Table */}
+          <div
+            className="flex gap-1 rounded-lg border border-[#e8edf4] bg-[#f8fafc] p-1"
+            role="group"
+            aria-label="View toggle"
+          >
             <button
-              key={range}
               type="button"
-              onClick={() => setDays(range)}
-              aria-pressed={days === range}
-              className={[
-                'cursor-pointer rounded-md px-3 py-1 text-[11px] font-bold transition-colors',
-                days === range
-                  ? 'bg-[#6547ff] text-white'
-                  : 'text-[#64748b] hover:text-[#0f172a]',
-              ].join(' ')}
+              onClick={() => setViewMode('chart')}
+              aria-pressed={viewMode === 'chart'}
+              title="Graph View"
+              className={`flex items-center gap-1.5 cursor-pointer rounded-md px-2.5 py-1 text-[11px] font-bold transition-all ${
+                viewMode === 'chart'
+                  ? 'bg-[#6547ff] text-white shadow-sm'
+                  : 'text-[#64748b] hover:text-[#0f172a]'
+              }`}
             >
-              {range}D
+              <BarChart3 className="h-3.5 w-3.5" />
+              <span>Graph</span>
             </button>
-          ))}
+            <button
+              type="button"
+              onClick={() => setViewMode('table')}
+              aria-pressed={viewMode === 'table'}
+              title="Table View"
+              className={`flex items-center gap-1.5 cursor-pointer rounded-md px-2.5 py-1 text-[11px] font-bold transition-all ${
+                viewMode === 'table'
+                  ? 'bg-[#6547ff] text-white shadow-sm'
+                  : 'text-[#64748b] hover:text-[#0f172a]'
+              }`}
+            >
+              <TableIcon className="h-3.5 w-3.5" />
+              <span>Table</span>
+            </button>
+          </div>
+
+          {/* Range Selector: 7D vs 30D */}
+          <div
+            className="flex gap-1 rounded-lg border border-[#e8edf4] bg-[#f8fafc] p-1"
+            role="group"
+            aria-label="Chart range"
+          >
+            {RANGES.map(range => (
+              <button
+                key={range}
+                type="button"
+                onClick={() => setDays(range)}
+                aria-pressed={days === range}
+                className={[
+                  'cursor-pointer rounded-md px-3 py-1 text-[11px] font-bold transition-colors',
+                  days === range
+                    ? 'bg-[#6547ff] text-white shadow-sm'
+                    : 'text-[#64748b] hover:text-[#0f172a]',
+                ].join(' ')}
+              >
+                {range}D
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -108,10 +166,79 @@ export default function DailyPollsChart() {
           <div className="flex h-40 flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-[#e8edf4] bg-[#f8fafc] px-6">
             <p className="text-[12px] font-bold text-[#475569]">Daily poll stats unavailable</p>
             <p className="text-center text-[10px] text-[#64748b]">
-              Restart the API server (server.ts) or deploy the latest build, then refresh.
+              Data will appear as soon as polls are recorded.
             </p>
           </div>
+        ) : viewMode === 'table' ? (
+          /* Table View */
+          <div className="overflow-hidden rounded-xl border border-[#e8edf4] bg-white">
+            <div className="max-h-72 overflow-y-auto custom-scrollbar">
+              <table className="w-full text-left border-collapse text-xs">
+                <thead className="sticky top-0 z-10 bg-[#f8fafc] border-b border-[#e8edf4] text-[10px] font-bold uppercase tracking-wider text-[#64748b]">
+                  <tr>
+                    <th className="py-2.5 px-4">Date</th>
+                    <th className="py-2.5 px-4 text-center">Day</th>
+                    <th className="py-2.5 px-4 text-right">Polls Generated</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#f1f5f9]">
+                  {sortedTableData.map(day => {
+                    const today = isToday(day.date);
+                    const yest = isYesterday(day.date);
+                    return (
+                      <tr 
+                        key={day.date} 
+                        className={`hover:bg-[#f8fafc] transition-colors ${today ? 'bg-indigo-50/20' : ''}`}
+                      >
+                        <td className="py-2.5 px-4 font-semibold text-[#0f172a] whitespace-nowrap">
+                          <span className="flex items-center gap-1.5">
+                            {formatDay(day.date)}
+                            {today && (
+                              <span className="rounded bg-blue-100 text-blue-700 px-1.5 py-0.5 text-[9px] font-bold uppercase">
+                                Today
+                              </span>
+                            )}
+                            {yest && (
+                              <span className="rounded bg-slate-100 text-slate-600 px-1.5 py-0.5 text-[9px] font-medium">
+                                Yesterday
+                              </span>
+                            )}
+                          </span>
+                        </td>
+                        <td className="py-2.5 px-4 text-center text-[#64748b] whitespace-nowrap font-medium">
+                          {new Date(`${day.date}T00:00:00`).toLocaleDateString('en-US', { weekday: 'long' })}
+                        </td>
+                        <td className="py-2.5 px-4 text-right font-bold whitespace-nowrap">
+                          {day.count > 0 ? (
+                            <span className="inline-flex items-center justify-center rounded-lg bg-indigo-50 text-[#5546ff] px-2.5 py-0.5 text-xs font-bold">
+                              {day.count.toLocaleString()}
+                            </span>
+                          ) : (
+                            <span className="text-[#94a3b8] font-normal">0</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+                <tfoot className="sticky bottom-0 bg-[#f8fafc] border-t-2 border-[#e8edf4] text-xs font-bold text-[#0f172a]">
+                  <tr>
+                    <td className="py-2.5 px-4">
+                      Total ({days} Days)
+                    </td>
+                    <td className="py-2.5 px-4 text-center text-[11px] text-[#64748b]">
+                      Avg: {(total / (data.length || 1)).toFixed(1)}/day
+                    </td>
+                    <td className="py-2.5 px-4 text-right font-black text-[#5546ff]">
+                      {total.toLocaleString()}
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </div>
         ) : total === 0 ? (
+          /* Graph View: Empty State */
           <div className="flex h-40 flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-[#e8edf4] bg-[#f8fafc] px-6">
             <p className="text-[12px] font-bold text-[#475569]">
               No polls created in the last {days} days
@@ -121,6 +248,7 @@ export default function DailyPollsChart() {
             </p>
           </div>
         ) : (
+          /* Graph View: Bars */
           <>
             <div
               className="flex h-40 items-stretch gap-[3px]"
@@ -147,7 +275,7 @@ export default function DailyPollsChart() {
                   >
                     {isSelected && (
                       <span
-                        className="pointer-events-none absolute left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded-md bg-[#0f172a] px-2 py-1 text-[10px] font-bold text-white"
+                        className="pointer-events-none absolute left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded-md bg-[#0f172a] px-2 py-1 text-[10px] font-bold text-white shadow-md"
                         style={{ bottom: `calc(${height}% + 8px)` }}
                       >
                         {day.count} poll{day.count === 1 ? '' : 's'} · {formatDay(day.date)}

@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../auth/hooks/useAuth';
 import { supabase } from '../../../lib/supabase';
 import { deleteUserAccount } from '../../auth/services/authService';
-import { Shield, BarChart3, Users, LogOut } from 'lucide-react';
+import { Shield, BarChart3, Users, LogOut, Settings } from 'lucide-react';
 import ProfileHeader from '../components/ProfileHeader';
 import ProfileAvatar from '../components/ProfileAvatar';
 import ProfileInfo from '../components/ProfileInfo';
@@ -158,7 +158,19 @@ export default function ProfilePage() {
           />
         )}
 
-        <div className="pt-4">
+        {!isAdmin && (
+          <div className="pt-2">
+            <Link
+              to="/settings"
+              className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-slate-50 text-slate-700 hover:bg-slate-100 hover:text-slate-900 border border-slate-200 rounded-xl font-bold transition-all active:scale-95 shadow-2xs"
+            >
+              <Settings className="w-5 h-5 text-slate-500" />
+              Settings & Delivery Config
+            </Link>
+          </div>
+        )}
+
+        <div className="pt-2">
           <button
             onClick={logout}
             className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-red-50 text-red-600 hover:bg-red-100 border border-red-200 rounded-xl font-bold transition-all active:scale-95"
@@ -176,7 +188,7 @@ export default function ProfilePage() {
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Link 
-                to="/admin" 
+                to="/user" 
                 className="flex items-center gap-3 p-4 bg-slate-50 rounded-xl border border-slate-200 hover:bg-indigo-50 hover:border-indigo-200 transition-all group"
               >
                 <div className="p-2 bg-white rounded-lg shadow-sm group-hover:bg-indigo-100 transition-colors">
@@ -188,7 +200,7 @@ export default function ProfilePage() {
                 </div>
               </Link>
               <Link 
-                to="/system-stats" 
+                to="/dashboard" 
                 className="flex items-center gap-3 p-4 bg-slate-50 rounded-xl border border-slate-200 hover:bg-indigo-50 hover:border-indigo-200 transition-all group"
               >
                 <div className="p-2 bg-white rounded-lg shadow-sm group-hover:bg-indigo-100 transition-colors">

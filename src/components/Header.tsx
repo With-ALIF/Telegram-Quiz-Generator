@@ -19,7 +19,7 @@ export default function Header() {
     <header className="sticky top-0 z-40 bg-white border-b border-slate-200">
       <div className="w-full px-4 h-16 flex items-center justify-between">
         <div className="flex items-center gap-8">
-          <NavLink to={isAdmin ? "/system-stats" : "/"} className="flex items-center gap-2 text-blue-600">
+          <NavLink to={isAdmin ? "/dashboard" : "/"} className="flex items-center gap-2 text-blue-600">
             <img 
               src="https://i.postimg.cc/RZ8xLzf7/Purple-White-Playful-Quiz-Time-Video-20260318-195033-0000.jpg" 
               alt="TeleQuiz Logo" 
@@ -48,7 +48,7 @@ export default function Header() {
             )}
             {user ? (
               <div className="flex items-center gap-4">
-                <NavLink to={isAdmin ? "/system-stats" : "/profile"} className="w-10 h-10 rounded-full overflow-hidden border-2 border-blue-100 hover:ring-2 ring-blue-400 transition-all flex items-center justify-center bg-blue-50">
+                <NavLink to={isAdmin ? "/dashboard" : "/profile"} className="w-10 h-10 rounded-full overflow-hidden border-2 border-blue-100 hover:ring-2 ring-blue-400 transition-all flex items-center justify-center bg-blue-50">
                   {profilePhoto ? (
                     <img 
                       src={profilePhoto} 

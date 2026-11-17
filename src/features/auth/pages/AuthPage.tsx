@@ -47,7 +47,7 @@ export default function AuthPage() {
         }
       } else {
         const user = await loginWithEmail(creds.email, creds.password);
-        if (user && user.email && ADMIN_EMAILS.map(e => e.toLowerCase()).includes(user.email.toLowerCase())) navigate('/system-stats');
+        if (user && user.email && ADMIN_EMAILS.map(e => e.toLowerCase()).includes(user.email.toLowerCase())) navigate('/dashboard');
         else navigate('/');
       }
     } catch (err: any) {

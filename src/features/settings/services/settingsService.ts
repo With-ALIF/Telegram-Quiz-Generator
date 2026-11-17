@@ -27,7 +27,6 @@ export const fetchSettings = async (userId: string) => {
     if (error && error.code !== 'PGRST116') throw error;
     
     if (data) {
-      // Use consistent key seen in useSettings
       localStorage.setItem('telegramQuizSettings', JSON.stringify(data));
       return data as TelegramSettings;
     }

@@ -932,31 +932,51 @@ async function startServer() {
       const daysParam = parseInt(String(req.query.days || "30"), 10);
       const days = Number.isNaN(daysParam) ? 30 : Math.min(Math.max(daysParam, 1), 365);
 
-      const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
-        auth: { autoRefreshToken: false, persistSession: false }
-      });
-
-      const sinceIso = new Date(Date.now() - (days - 1) * 24 * 3600 * 1000).toISOString();
-      const { data: rows, error } = await supabaseAdmin
-        .from('poll_questions')
-        .select('created_at')
-        .gte('created_at', sinceIso);
-
-      if (error) throw error;
-
-      // Count rows per UTC day
-      const counts = new Map<string, number>();
-      (rows || []).forEach((row: any) => {
-        if (!row || !row.created_at) return;
-        const key = new Date(row.created_at).toISOString().slice(0, 10);
-        counts.set(key, (counts.get(key) || 0) + 1);
-      });
-
-      // Zero-fill every day in the range so the chart has no gaps
+      // Pre-generate zero-filled days
       const daily: { date: string; count: number }[] = [];
+      const counts = new Map<string, number>();
       for (let i = days - 1; i >= 0; i--) {
         const key = new Date(Date.now() - i * 24 * 3600 * 1000).toISOString().slice(0, 10);
-        daily.push({ date: key, count: counts.get(key) || 0 });
+        daily.push({ date: key, count: 0 });
+        counts.set(key, 0);
+      }
+
+      try {
+        const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+          auth: { autoRefreshToken: false, persistSession: false }
+        });
+
+        const sinceIso = new Date(Date.now() - (days - 1) * 24 * 3600 * 1000).toISOString();
+        let { data: rows, error } = await supabaseAdmin
+          .from('poll_questions')
+          .select('created_at')
+          .gte('created_at', sinceIso);
+
+        if (error && error.message?.includes('created_at')) {
+          const fallback = await supabaseAdmin
+            .from('poll_questions')
+            .select('updated_at')
+            .gte('updated_at', sinceIso);
+          rows = (fallback.data || []).map((r: any) => ({ created_at: r.updated_at }));
+          error = fallback.error;
+        }
+
+        if (!error && rows) {
+          rows.forEach((row: any) => {
+            const dt = row?.created_at || row?.updated_at;
+            if (!dt) return;
+            const key = new Date(dt).toISOString().slice(0, 10);
+            if (counts.has(key)) {
+              counts.set(key, (counts.get(key) || 0) + 1);
+            }
+          });
+
+          daily.forEach(d => {
+            d.count = counts.get(d.date) || 0;
+          });
+        }
+      } catch (queryErr) {
+        console.warn("Could not query poll_questions for daily stats:", queryErr);
       }
 
       return res.status(200).json({ days: daily });
