@@ -150,7 +150,26 @@ export const updateUserStats = async (userId: string, stats: { generated: number
   }
 };
 
+export const recordDailyPollCount = async (count: number) => {
+  if (count <= 0) return;
+  try {
+    const today = new Date().toISOString().slice(0, 10);
+    const { data } = await supabase.from('daily_poll_stats').select('count').eq('date', today).maybeSingle();
+    const current = Number(data?.count) || 0;
+    await supabase.from('daily_poll_stats').upsert({
+      date: today,
+      count: current + count,
+      updated_at: new Date().toISOString()
+    });
+  } catch {
+    // Optional daily_poll_stats table
+  }
+};
+
 export const incrementUserStats = async (userId: string, deltas: { generated: number; sent: number }) => {
+  if (deltas.generated > 0) {
+    recordDailyPollCount(deltas.generated).catch(() => {});
+  }
   try {
     const { data: profile, error: fetchError } = await supabase
       .from('profiles')

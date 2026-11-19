@@ -39,7 +39,7 @@ export function useQuizGeneration(
     localStorage.setItem('preserveBoardInfo', String(val));
   };
 
-  const processGeneratedQuestions = async (generated: any[]) => {
+  const processGeneratedQuestions = (generated: any[]) => {
     const newQuestions: QuizQuestion[] = generated.map((q: any) => ({
       ...q,
       id: crypto.randomUUID(),
@@ -49,7 +49,9 @@ export function useQuizGeneration(
     setQuestions(prev => [...newQuestions, ...prev]);
     
     if (user) {
-      await batchSaveQuizzes(user.id, newQuestions);
+      batchSaveQuizzes(user.id, newQuestions).catch(err => {
+        console.warn("Background quiz save failed:", err);
+      });
     }
 
     setStats(prev => {

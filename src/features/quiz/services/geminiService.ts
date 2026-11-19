@@ -1,7 +1,125 @@
 import { QuizQuestion } from "../../../types";
 
+/**
+ * Fast local parser for formatted MCQ text (Bengali or English).
+ * Instantly extracts questions without network latency if the input is already in standard MCQ format.
+ */
+function tryParseLocalMCQs(text: string, preserveBoardInfo: boolean): Omit<QuizQuestion, 'id' | 'status'>[] | null {
+  try {
+    const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+    if (lines.length < 5) return null;
+
+    const optRegex = /^\s*(?:[\(\[\{]?([কখগঘabcdABCD1234])[\)\]\}]?[\.\:\-\s]+|\(([কখগঘabcdABCD1234])\)\s*)(.*)$/;
+    const ansRegex = /^\s*(?:উত্তর|উঃ|উ:|সঠিক\s*উত্তর|Ans(?:wer)?|Correct(?:\s*Answer)?)\s*[:\-\s]+(.*)$/i;
+    const qNumRegex = /^\s*(?:(?:প্রশ্ন|Q|Question)\s*)?([০-৯\d]+)[\.\)\:\-\s]+(.*)$/i;
+
+    const questions: Omit<QuizQuestion, 'id' | 'status'>[] = [];
+    let currentQ: string = '';
+    let currentOpts: string[] = [];
+    let correctIdx: number = 0;
+    let foundAns = false;
+    let explanation = '';
+
+    const finalizeCurrent = () => {
+      if (currentQ && currentOpts.length >= 2) {
+        let qText = currentQ.trim();
+        if (!preserveBoardInfo) {
+          qText = qText.replace(/\[\s*(.*?বোর্ড|.*?বো\.|.*?board|.*?university|.*?varsity|.*?\d{4}.*?)\s*\]/gi, '').trim();
+          qText = qText.replace(/\[[^\]]+\]\s*$/, '').trim();
+        }
+
+        const finalOpts = [...currentOpts];
+        while (finalOpts.length < 4) {
+          finalOpts.push(`Option ${finalOpts.length + 1}`);
+        }
+        if (finalOpts.length > 4) {
+          finalOpts.length = 4;
+        }
+
+        questions.push({
+          question: qText.substring(0, 250),
+          options: finalOpts.slice(0, 4).map(o => o.substring(0, 90)),
+          correctOptionIndex: (correctIdx >= 0 && correctIdx < 4) ? correctIdx : 0,
+          explanation: explanation.substring(0, 150)
+        });
+      }
+      currentQ = '';
+      currentOpts = [];
+      correctIdx = 0;
+      foundAns = false;
+      explanation = '';
+    };
+
+    const optMap: Record<string, number> = {
+      'ক': 0, 'খ': 1, 'গ': 2, 'ঘ': 3,
+      'a': 0, 'b': 1, 'c': 2, 'd': 3,
+      'A': 0, 'B': 1, 'C': 2, 'D': 3,
+      '1': 0, '2': 1, '3': 2, '4': 3,
+      '১': 0, '২': 1, '৩': 2, '৪': 3
+    };
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+
+      const ansMatch = line.match(ansRegex);
+      if (ansMatch) {
+        foundAns = true;
+        const ansRaw = ansMatch[1].trim();
+        const firstChar = ansRaw.charAt(0);
+        if (optMap[firstChar] !== undefined) {
+          correctIdx = optMap[firstChar];
+        } else {
+          const found = currentOpts.findIndex(o => o.trim() === ansRaw);
+          if (found !== -1) {
+            correctIdx = found;
+          }
+        }
+        continue;
+      }
+
+      const expMatch = line.match(/^\s*(?:ব্যাখ্যা|Explanation|Note)\s*[:\-\s]+(.*)$/i);
+      if (expMatch) {
+        explanation = expMatch[1].trim();
+        continue;
+      }
+
+      const optMatch = line.match(optRegex);
+      if (optMatch && currentQ) {
+        const optText = (optMatch[3] || '').trim();
+        if (optText && currentOpts.length < 4) {
+          currentOpts.push(optText);
+          continue;
+        }
+      }
+
+      const qMatch = line.match(qNumRegex);
+      if (qMatch && (!currentQ || currentOpts.length >= 2 || foundAns)) {
+        finalizeCurrent();
+        currentQ = qMatch[2] ? qMatch[2].trim() : line;
+        continue;
+      }
+
+      if (!currentQ) {
+        currentQ = line;
+      } else if (currentOpts.length === 0) {
+        currentQ += ' ' + line;
+      }
+    }
+
+    finalizeCurrent();
+
+    if (questions.length > 0) {
+      console.log(`[geminiService] Fast local parser successfully extracted ${questions.length} questions instantly!`);
+      return questions;
+    }
+  } catch (err) {
+    console.warn("[geminiService] Local MCQ parser error, falling back to API:", err);
+  }
+  return null;
+}
+
 export async function generateQuizFromText(text: string, count: number = 5, preserveBoardInfo: boolean = true, retries: number = 3): Promise<Omit<QuizQuestion, 'id' | 'status'>[]> {
-  // Try local JSON parsing first to immediately support copy-pasting preformatted JSON arrays
+  // 1. Try local JSON parsing first
   try {
     const trimmedText = text.trim();
     if (trimmedText.startsWith('[') || trimmedText.startsWith('{')) {
@@ -13,9 +131,8 @@ export async function generateQuizFromText(text: string, count: number = 5, pres
           let qText = item.question || item.q || '';
           
           if (!preserveBoardInfo) {
-            // Strip any bracketed board/university info if not preserved
             qText = qText.replace(/\[\s*(.*?বোর্ড|.*?বো\.|.*?board|.*?university|.*?varsity|.*?\d{4}.*?)\s*\]/gi, '').trim();
-            qText = qText.replace(/\[[^\]]+\]\s*$/, '').trim(); // also remove trailing bracketed info if any
+            qText = qText.replace(/\[[^\]]+\]\s*$/, '').trim();
           }
 
           let opts: string[] = [];
@@ -23,7 +140,6 @@ export async function generateQuizFromText(text: string, count: number = 5, pres
           else if (Array.isArray(item.choices)) opts = item.choices;
           else if (Array.isArray(item.answers)) opts = item.answers;
           
-          // Pad or slice options to have exactly 4 items
           if (opts.length < 4) {
             while (opts.length < 4) {
               opts.push(`Option ${opts.length + 1}`);
@@ -32,7 +148,6 @@ export async function generateQuizFromText(text: string, count: number = 5, pres
             opts = opts.slice(0, 4);
           }
 
-          // Determine correct index
           let correctIdx = 0;
           if (typeof item.correctOptionIndex === 'number') {
             correctIdx = item.correctOptionIndex;
@@ -44,16 +159,13 @@ export async function generateQuizFromText(text: string, count: number = 5, pres
             if (foundIdx !== -1) {
               correctIdx = foundIdx;
             } else {
-              // Try numeric answer
               const parsedIdx = parseInt(ansStr);
               if (!isNaN(parsedIdx)) {
-                // If the parsed index is 1-based (from 1 to 4), make it 0-based
                 correctIdx = parsedIdx >= 1 && parsedIdx <= 4 ? parsedIdx - 1 : parsedIdx;
               }
             }
           }
 
-          // Ensure correct index is within bounds [0, 3]
           if (correctIdx < 0 || correctIdx > 3 || isNaN(correctIdx)) {
             correctIdx = 0;
           }
@@ -70,11 +182,16 @@ export async function generateQuizFromText(text: string, count: number = 5, pres
       }
     }
   } catch (jsonErr) {
-    // If JSON parsing fails, we gracefully continue with Gemini generation
-    console.log("Local JSON parser bypassed, falling back to Gemini API endpoint:", jsonErr);
+    // If JSON parsing fails, continue
   }
 
-  // Call the server-side API proxy route
+  // 2. Try fast local MCQ text parser for preformatted questions
+  const localQuestions = tryParseLocalMCQs(text, preserveBoardInfo);
+  if (localQuestions && localQuestions.length > 0) {
+    return localQuestions;
+  }
+
+  // 3. Fall back to high-speed Gemini API
   try {
     const response = await fetch("/api/quiz/generate", {
       method: "POST",

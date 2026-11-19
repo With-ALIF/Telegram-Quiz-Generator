@@ -24,9 +24,9 @@ export default defineConfig(({ mode }) => {
           theme_color: '#3b82f6',
           icons: [
             {
-              src: 'https://i.postimg.cc/RZ8xLzf7/Purple-White-Playful-Quiz-Time-Video-20260318-195033-0000.jpg',
+              src: '/logo.svg',
               sizes: '512x512',
-              type: 'image/jpeg',
+              type: 'image/svg+xml',
               purpose: 'any maskable'
             }
           ]

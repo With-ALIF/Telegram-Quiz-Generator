@@ -21,10 +21,9 @@ export default function Header() {
         <div className="flex items-center gap-8">
           <NavLink to={isAdmin ? "/dashboard" : "/"} className="flex items-center gap-2 text-blue-600">
             <img 
-              src="https://i.postimg.cc/RZ8xLzf7/Purple-White-Playful-Quiz-Time-Video-20260318-195033-0000.jpg" 
+              src="/logo.svg" 
               alt="TeleQuiz Logo" 
-              className="w-9 h-9 object-cover rounded-xl shadow-sm border border-slate-100" 
-              referrerPolicy="no-referrer" 
+              className="w-9 h-9 object-contain rounded-xl shadow-sm" 
             />
             <h1 className="text-xl font-bold tracking-tight text-blue-600">
               TeleQuiz

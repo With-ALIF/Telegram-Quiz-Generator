@@ -56,12 +56,11 @@ export const Sidebar: React.FC = () => {
     <aside className="h-screen w-64 bg-white border-r border-gray-100 flex flex-col p-4">
       {/* Brand Section */}
       <div className="flex items-center gap-3 px-4 py-6 mb-4">
-        <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-blue-100">
+        <div className="w-10 h-10 rounded-xl flex items-center justify-center shadow-md">
           <img 
-            src="https://i.postimg.cc/RZ8xLzf7/Purple-White-Playful-Quiz-Time-Video-20260318-195033-0000.jpg" 
+            src="/logo.svg" 
             alt="Logo" 
-            className="w-8 h-8 object-cover rounded-lg"
-            referrerPolicy="no-referrer"
+            className="w-10 h-10 object-contain rounded-xl"
           />
         </div>
         <div>
@@ -104,6 +103,17 @@ export const Sidebar: React.FC = () => {
             </button>
           </>
         )}
+        <div className="pt-3 px-2 text-center">
+          <a
+            href="https://alif.mnr.bd/projects/telegram-quiz-generator"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-[10px] text-gray-400 hover:text-blue-600 transition-colors block leading-tight font-medium"
+            title="TeleQuiz by Abdullah Al Khalid Alif"
+          >
+            TeleQuiz by <span className="font-semibold text-gray-500 hover:text-blue-600">Abdullah Al Khalid Alif</span>
+          </a>
+        </div>
       </div>
     </aside>
   );

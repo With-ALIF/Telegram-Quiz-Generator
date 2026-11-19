@@ -1,5 +1,5 @@
 import React from 'react';
-import { Plus, Mail, Calendar } from 'lucide-react';
+import { Plus, Mail, Calendar, FileQuestion, Send } from 'lucide-react';
 import { ManagedUser } from '../../types';
 import { UserMenu } from './UserMenu';
 import { FeaturePopover } from './FeaturePopover';
@@ -131,18 +131,43 @@ export const UserCard: React.FC<UserCardProps> = ({
         />
       </div>
 
-      {/* Middle: Usage percentage + Progress bar */}
-      <div className="mt-4">
+      {/* Middle: Generated & Sent stat cards */}
+      <div className="mt-4 grid grid-cols-2 gap-2.5">
+        <div className="flex items-center gap-2.5 rounded-xl border border-emerald-100 bg-emerald-50/60 p-2.5 transition-all hover:bg-emerald-50">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-emerald-600">
+            <FileQuestion className="h-4 w-4" strokeWidth={2.2} aria-hidden="true" />
+          </div>
+          <div className="min-w-0">
+            <span className="block text-[10px] font-bold uppercase tracking-wider text-emerald-700">Generate</span>
+            <span className="block text-sm font-extrabold text-slate-900 leading-tight">
+              {user.generated.toLocaleString()}
+            </span>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2.5 rounded-xl border border-amber-100 bg-amber-50/60 p-2.5 transition-all hover:bg-amber-50">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-100 text-amber-600">
+            <Send className="h-4 w-4" strokeWidth={2.2} aria-hidden="true" />
+          </div>
+          <div className="min-w-0">
+            <span className="block text-[10px] font-bold uppercase tracking-wider text-amber-700">Sent</span>
+            <span className="block text-sm font-extrabold text-slate-900 leading-tight">
+              {user.sent.toLocaleString()}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Usage percentage + Progress bar */}
+      <div className="mt-3">
         <div className="flex items-center justify-between text-xs font-bold">
-          <span className="text-slate-800">Usage</span>
+          <span className="text-slate-700">Usage Ratio</span>
           <span className="text-slate-900">
-            {user.sent.toLocaleString()} / {user.generated.toLocaleString()}{' '}
-            <span className="font-normal text-slate-400">·</span>{' '}
-            <span className="font-bold text-blue-600">{percent}%</span>
+            <span className="font-extrabold text-blue-600">{percent}%</span>{' '}
           </span>
         </div>
         <div
-          className="mt-2 h-2 w-full overflow-hidden rounded-full bg-slate-100"
+          className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-slate-100"
           role="img"
           aria-label={`${percent}% of generated quizzes sent`}
         >

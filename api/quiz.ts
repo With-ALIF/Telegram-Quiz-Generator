@@ -8,8 +8,28 @@ const supabaseAdmin = getSupabaseAdmin();
 let aiClients: GoogleGenAI[] = [];
 let currentClientIndex = 0;
 
-let activeTextModels = ["gemini-3.8-flash", "gemini-3.5-flash-lite", "gemini-3.5-flash"];
-let activeImageModels = ["gemini-3.8-flash", "gemini-3.5-flash-lite", "gemini-3.5-flash"];
+// Real, ultra-fast Gemini models (fastest first)
+const defaultTextModels = [
+  "gemini-2.5-flash",
+  "gemini-2.0-flash",
+  "gemini-2.0-flash-lite",
+  "gemini-1.5-flash"
+];
+
+const defaultImageModels = [
+  "gemini-2.5-flash",
+  "gemini-2.0-flash",
+  "gemini-1.5-flash"
+];
+
+const configuredModel = (process.env.GEMINI_MODEL || process.env.VITE_GEMINI_MODEL || '').trim();
+let activeTextModels = configuredModel
+  ? [configuredModel, ...defaultTextModels.filter(m => m !== configuredModel)]
+  : [...defaultTextModels];
+
+let activeImageModels = configuredModel
+  ? [configuredModel, ...defaultImageModels.filter(m => m !== configuredModel)]
+  : [...defaultImageModels];
 
 function demoteModel(modelList: string[], modelName: string, serviceName: string, isPermanent = false) {
   const index = modelList.indexOf(modelName);
@@ -106,9 +126,8 @@ However, you MUST keep the core question statement EXACTLY 100% identical word-f
       const aiClient = getAI();
       console.log(`[Quiz API] Text Attempt ${attempt}: Using model ${currentModel}`);
       
-      const response = await aiClient.models.generateContent({
-        model: currentModel,
-        contents: `You are an expert quiz creator. Extract exactly ${count} multiple-choice questions from the provided text. 
+      const genConfig: any = {
+        systemInstruction: `You are an expert quiz creator. Extract exactly ${count} multiple-choice questions from the provided text. 
 The text may be unstructured, in different languages (including Bengali), messy, or in CSV format. 
 If the input is CSV, map the options and the correct answer properly (note that CSV answers might be 1-indexed, e.g., 1, 2, 3, 4, but you MUST output a 0-indexed correctOptionIndex, e.g., 0, 1, 2, 3).
 Identify key facts and convert them into a quiz format. 
@@ -122,37 +141,50 @@ ${boardPreservationInstruction}
 CRITICAL: Keep questions under 250 characters and options under 90 characters to comply with Telegram's limits.
 The output must be in the language of the input text.
 
-Text to process:
-${text}`,
-        config: {
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.ARRAY,
-            items: {
-              type: Type.OBJECT,
-              properties: {
-                question: { 
-                  type: Type.STRING,
-                  description: "The quiz question. Max 250 characters."
-                },
-                options: { 
-                  type: Type.ARRAY, 
-                  items: { type: Type.STRING },
-                  description: "Exactly 4 options for the multiple choice question. Max 90 characters per option."
-                },
-                correctOptionIndex: { 
-                  type: Type.INTEGER,
-                  description: "The index of the correct option (0 to 3). If the source says answer is 4, this should be 3."
-                },
-                explanation: { 
-                  type: Type.STRING,
-                  description: "A short explanation of why the answer is correct. Max 150 characters."
-                }
+CRITICAL - LANGUAGE CONSISTENCY FOR EXPLANATION:
+- If the question is in Bengali (বাংলা), the explanation MUST BE strictly and entirely in Bengali (বাংলা). Under no circumstances should you provide an English explanation for a Bengali question!
+- If the question is in English, the explanation should be in English.
+- Always strictly match the explanation language to the question's language!`,
+        temperature: 0.2,
+        maxOutputTokens: Math.min(4096, Math.max(1024, count * 350)),
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.ARRAY,
+          items: {
+            type: Type.OBJECT,
+            properties: {
+              question: { 
+                type: Type.STRING,
+                description: "The quiz question. Max 250 characters."
               },
-              required: ["question", "options", "correctOptionIndex", "explanation"]
-            }
+              options: { 
+                type: Type.ARRAY, 
+                items: { type: Type.STRING },
+                description: "Exactly 4 options for the multiple choice question. Max 90 characters per option."
+              },
+              correctOptionIndex: { 
+                type: Type.INTEGER,
+                description: "The index of the correct option (0 to 3). If the source says answer is 4, this should be 3."
+              },
+              explanation: { 
+                type: Type.STRING,
+                description: "A short explanation of why the answer is correct. Max 150 characters. CRITICAL: If the question is in Bengali (বাংলা), this explanation MUST BE IN BENGALI (বাংলা). NEVER use English for Bengali questions."
+              }
+            },
+            required: ["question", "options", "correctOptionIndex", "explanation"]
           }
         }
+      };
+
+      // Disable reasoning/thinking tokens on 2.0/2.5 models for instantaneous generation
+      if (currentModel.includes('2.5') || currentModel.includes('2.0')) {
+        genConfig.thinkingConfig = { thinkingBudget: 0 };
+      }
+
+      const response = await aiClient.models.generateContent({
+        model: currentModel,
+        contents: text,
+        config: genConfig
       });
 
       const textOutput = response.text;
@@ -191,8 +223,10 @@ ${text}`,
         console.warn(`[Quiz API] Attempt ${attempt} with model ${currentModel} failed (will retry):`, error.message || error);
         rotateKey();
         modelAttempt++;
-        const waitTime = isServiceUnavailable ? 1200 : Math.pow(1.3, attempt % 3) * 400;
-        await delay(waitTime);
+        const waitTime = isNotFound ? 0 : (isServiceUnavailable ? 600 : Math.pow(1.2, attempt % 3) * 200);
+        if (waitTime > 0) {
+          await delay(waitTime);
+        }
         continue;
       }
       
@@ -224,6 +258,57 @@ export async function generateQuizFromImageLogic(imageBase64: string, mimeType: 
       const aiClient = getAI();
       console.log(`[Quiz API] Image Attempt ${attempt}: Using model ${currentModel}`);
       
+      const imgConfig: any = {
+        systemInstruction: `You are an expert quiz creator. Extract exactly ${count} multiple-choice questions from the provided image. 
+The image contains questions and options. Extract them faithfully.
+Note that the answers might be indicated in the image (e.g., circled, bold, or at the end).
+Ensure each question has exactly 4 options. 
+CRITICAL: Keep questions under 250 characters and options under 90 characters to comply with Telegram's limits.
+The output must be in the language of the input image.
+
+CRITICAL - LANGUAGE CONSISTENCY FOR EXPLANATION:
+- If the question/image is in Bengali (বাংলা), the explanation MUST BE strictly and entirely in Bengali (বাংলা). Never provide an English explanation for a Bengali question!
+- If the question is in English, the explanation should be in English.
+- Always strictly match the explanation language to the question's language!
+
+Identify key facts and convert them into a quiz format. 
+Map the options and the correct answer properly.
+You MUST output a 0-indexed correctOptionIndex (e.g., 0, 1, 2, 3).`,
+        temperature: 0.2,
+        maxOutputTokens: Math.min(4096, Math.max(1024, count * 350)),
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.ARRAY,
+          items: {
+            type: Type.OBJECT,
+            properties: {
+              question: { 
+                type: Type.STRING,
+                description: "The quiz question. Max 250 characters."
+              },
+              options: { 
+                type: Type.ARRAY, 
+                items: { type: Type.STRING },
+                description: "Exactly 4 options for the multiple choice question. Max 90 characters per option."
+              },
+              correctOptionIndex: { 
+                type: Type.INTEGER,
+                description: "The index of the correct option (0 to 3)."
+              },
+              explanation: { 
+                type: Type.STRING,
+                description: "A short explanation. Max 150 characters. CRITICAL: If the question is in Bengali (বাংলা), this explanation MUST BE IN BENGALI (বাংলা). NEVER use English for Bengali questions."
+              }
+            },
+            required: ["question", "options", "correctOptionIndex", "explanation"]
+          }
+        }
+      };
+
+      if (currentModel.includes('2.5') || currentModel.includes('2.0')) {
+        imgConfig.thinkingConfig = { thinkingBudget: 0 };
+      }
+
       const response = await aiClient.models.generateContent({
         model: currentModel,
         contents: [
@@ -233,46 +318,9 @@ export async function generateQuizFromImageLogic(imageBase64: string, mimeType: 
               mimeType: mimeType
             }
           },
-          `You are an expert quiz creator. Extract exactly ${count} multiple-choice questions from the provided image. 
-The image contains questions and options. Extract them faithfully.
-Note that the answers might be indicated in the image (e.g., circled, bold, or at the end).
-Ensure each question has exactly 4 options. 
-CRITICAL: Keep questions under 250 characters and options under 90 characters to comply with Telegram's limits.
-The output must be in the language of the input image.
-
-Identify key facts and convert them into a quiz format. 
-Map the options and the correct answer properly.
-You MUST output a 0-indexed correctOptionIndex (e.g., 0, 1, 2, 3).`
+          `Extract the multiple-choice questions from this image according to the system instructions.`
         ],
-        config: {
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.ARRAY,
-            items: {
-              type: Type.OBJECT,
-              properties: {
-                question: { 
-                  type: Type.STRING,
-                  description: "The quiz question. Max 250 characters."
-                },
-                options: { 
-                  type: Type.ARRAY, 
-                  items: { type: Type.STRING },
-                  description: "Exactly 4 options for the multiple choice question. Max 90 characters per option."
-                },
-                correctOptionIndex: { 
-                  type: Type.INTEGER,
-                  description: "The index of the correct option (0 to 3)."
-                },
-                explanation: { 
-                  type: Type.STRING,
-                  description: "A short explanation. Max 150 characters."
-                }
-              },
-              required: ["question", "options", "correctOptionIndex", "explanation"]
-            }
-          }
-        }
+        config: imgConfig
       });
 
       const textOutput = response.text;
@@ -311,8 +359,10 @@ You MUST output a 0-indexed correctOptionIndex (e.g., 0, 1, 2, 3).`
         console.warn(`[Quiz API] Image Attempt ${attempt} with model ${currentModel} failed (will retry):`, error.message || error);
         rotateKey();
         modelAttempt++;
-        const waitTime = isServiceUnavailable ? 1200 : Math.pow(1.3, attempt % 3) * 400;
-        await delay(waitTime);
+        const waitTime = isNotFound ? 0 : (isServiceUnavailable ? 600 : Math.pow(1.2, attempt % 3) * 200);
+        if (waitTime > 0) {
+          await delay(waitTime);
+        }
         continue;
       }
       

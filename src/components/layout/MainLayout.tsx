@@ -84,10 +84,9 @@ export const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }
           <div className="flex items-center gap-3">
             {/* TeleQuiz Brand Logo */}
             <img 
-              src="https://i.postimg.cc/RZ8xLzf7/Purple-White-Playful-Quiz-Time-Video-20260318-195033-0000.jpg" 
+              src="/logo.svg" 
               alt="TeleQuiz Logo" 
-              className="lg:hidden w-8 h-8 object-cover rounded-xl shadow-sm border border-slate-100" 
-              referrerPolicy="no-referrer" 
+              className="lg:hidden w-8 h-8 object-contain rounded-xl shadow-sm" 
             />
 
             <div className="hidden sm:block">

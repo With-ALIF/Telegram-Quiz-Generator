@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Allow: /auth
+Disallow: /user
+Disallow: /dashboard
+Disallow: /api/
+
+Sitemap: https://poll.mnr.bd/sitemap.xml

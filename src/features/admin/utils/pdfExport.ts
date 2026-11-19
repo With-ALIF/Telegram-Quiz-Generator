@@ -1,13 +1,36 @@
 import { QuizQuestion } from '../../../types';
 import { AdminUser, ManagedUser } from '../types';
+import { AVAILABLE_PAGES } from '../constants';
 
-const getUserStats = (user: AdminUser | ManagedUser): { name: string; email: string; generated: number; sent: number } => {
+const formatActiveFeatures = (featureIds: string[], role?: string): string => {
+  if (role === 'admin') {
+    return 'Admin (Full Access)';
+  }
+  if (!featureIds || featureIds.length === 0) {
+    return 'Home Only';
+  }
+  return featureIds
+    .map(id => AVAILABLE_PAGES.find(p => p.id === id)?.name || id)
+    .join(', ');
+};
+
+const getUserStats = (user: AdminUser | ManagedUser): { 
+  name: string; 
+  email: string; 
+  generated: number; 
+  sent: number;
+  features: string[];
+  role?: string;
+} => {
   const u = user as any;
   const name = u.name || u.displayName || 'Anonymous User';
   const email = u.email || '—';
   const generated = typeof u.generated === 'number' ? u.generated : (u.stats?.generated || 0);
   const sent = typeof u.sent === 'number' ? u.sent : (u.stats?.sent || 0);
-  return { name, email, generated, sent };
+  const rawFeatures = u.features || u.permissions || [];
+  const features = Array.isArray(rawFeatures) ? rawFeatures : [];
+  const role = u.role || 'user';
+  return { name, email, generated, sent, features, role };
 };
 
 export const generateGlobalUserReportPDF = async (users: (AdminUser | ManagedUser)[]) => {
@@ -116,12 +139,14 @@ export const generateGlobalUserReportPDF = async (users: (AdminUser | ManagedUse
 
   // Main list
   const tableRows = users.map((user, index) => {
-    const { name, email, generated, sent } = getUserStats(user);
+    const { name, email, generated, sent, features, role } = getUserStats(user);
     const percent = generated > 0 ? `${Math.round((sent / generated) * 100)}%` : '0%';
+    const activeFeatures = formatActiveFeatures(features, role);
     return [
       index + 1,
       name,
       email,
+      activeFeatures,
       generated.toLocaleString(),
       sent.toLocaleString(),
       percent
@@ -133,6 +158,7 @@ export const generateGlobalUserReportPDF = async (users: (AdminUser | ManagedUse
     '',
     'SUMMED REPORT TOTAL',
     `${totalUsers} users`,
+    '—',
     totalGenerated.toLocaleString(),
     totalSent.toLocaleString(),
     totalGenerated > 0 ? `${Math.round((totalSent / totalGenerated) * 100)}%` : '0%'
@@ -140,13 +166,13 @@ export const generateGlobalUserReportPDF = async (users: (AdminUser | ManagedUse
   
   autoTable(doc, {
     startY: 84,
-    head: [['No.', 'User Name', 'Email Identifier', 'Polls Generated', 'Polls Sent', 'Sent %']],
+    head: [['No.', 'User Name', 'Email Identifier', 'Active Features', 'Polls Generated', 'Polls Sent', 'Sent %']],
     body: tableRows,
     theme: 'striped',
     headStyles: { 
       fillColor: [37, 99, 235], // Blue 600
       textColor: [255, 255, 255],
-      fontSize: 9.5,
+      fontSize: 9,
       fontStyle: 'bold',
       halign: 'left',
       valign: 'middle',
@@ -156,19 +182,20 @@ export const generateGlobalUserReportPDF = async (users: (AdminUser | ManagedUse
       fillColor: [248, 250, 252]
     },
     styles: { 
-      fontSize: 9, 
+      fontSize: 8.5, 
       cellPadding: 4,
       textColor: [51, 65, 85], // Slate 700
       lineColor: [241, 245, 249], // Slate 100
       lineWidth: 0.5
     },
     columnStyles: {
-      0: { cellWidth: 12, halign: 'center' },
-      1: { cellWidth: 'auto', fontStyle: 'bold' },
-      2: { cellWidth: 'auto' },
-      3: { cellWidth: 32, halign: 'center' },
-      4: { cellWidth: 28, halign: 'center' },
-      5: { cellWidth: 22, halign: 'center' }
+      0: { cellWidth: 10, halign: 'center' },
+      1: { cellWidth: 32, fontStyle: 'bold' },
+      2: { cellWidth: 42 },
+      3: { cellWidth: 40 },
+      4: { cellWidth: 22, halign: 'center' },
+      5: { cellWidth: 18, halign: 'center' },
+      6: { cellWidth: 16, halign: 'center' }
     },
     didParseCell: (data) => {
       // Style the Summary row
@@ -208,8 +235,9 @@ export const generateSingleUserSummaryPDF = async (user: AdminUser | ManagedUser
   ]);
   const doc = new jsPDF();
   
-  const { name, email, generated, sent } = getUserStats(user);
+  const { name, email, generated, sent, features, role } = getUserStats(user);
   const percent = generated > 0 ? `${Math.round((sent / generated) * 100)}%` : '0%';
+  const activeFeatures = formatActiveFeatures(features, role);
   
   // Colors
   const primaryColor = [37, 99, 235]; // Blue 600
@@ -285,6 +313,8 @@ export const generateSingleUserSummaryPDF = async (user: AdminUser | ManagedUser
   const detailsRows = [
     ['User Name', name],
     ['Email Address', email],
+    ['Account Role', role === 'admin' ? 'Administrator' : 'Standard User'],
+    ['Active Features', activeFeatures],
     ['Polls Generated', generated.toLocaleString()],
     ['Polls Sent to Telegram', sent.toLocaleString()],
     ['Delivery Ratio', percent],

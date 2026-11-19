@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import fs from 'fs';
 import express from "express";
 import { createServer as createViteServer } from "vite";
 import path from "path";
@@ -961,6 +962,8 @@ async function startServer() {
         counts.set(key, 0);
       }
 
+      const todayKey = new Date().toISOString().slice(0, 10);
+
       try {
         const authHeader = req.headers['authorization'] || req.headers['Authorization'];
         const token = (typeof authHeader === 'string' && authHeader.startsWith('Bearer '))
@@ -969,6 +972,27 @@ async function startServer() {
 
         const supabaseAdmin = getAdminClient(token);
 
+        // 1. Check daily_poll_stats table if present
+        try {
+          const sinceDate = daily[0]?.date || todayKey;
+          const { data: statsRows } = await supabaseAdmin
+            .from('daily_poll_stats')
+            .select('date, count')
+            .gte('date', sinceDate);
+
+          if (statsRows && statsRows.length > 0) {
+            statsRows.forEach((r: any) => {
+              const key = String(r.date).slice(0, 10);
+              if (counts.has(key)) {
+                counts.set(key, Math.max(counts.get(key) || 0, Number(r.count) || 0));
+              }
+            });
+          }
+        } catch {
+          // Optional daily_poll_stats table may not exist yet
+        }
+
+        // 2. Count surviving rows in poll_questions
         const sinceIso = new Date(Date.now() - (days - 1) * 24 * 3600 * 1000).toISOString();
         let { data: rows, error } = await supabaseAdmin
           .from('poll_questions')
@@ -985,19 +1009,24 @@ async function startServer() {
         }
 
         if (!error && rows) {
+          const questionsByDate = new Map<string, number>();
           rows.forEach((row: any) => {
             const dt = row?.created_at || row?.updated_at;
             if (!dt) return;
             const key = new Date(dt).toISOString().slice(0, 10);
-            if (counts.has(key)) {
-              counts.set(key, (counts.get(key) || 0) + 1);
-            }
+            questionsByDate.set(key, (questionsByDate.get(key) || 0) + 1);
           });
 
-          daily.forEach(d => {
-            d.count = counts.get(d.date) || 0;
+          questionsByDate.forEach((qCount, dateKey) => {
+            if (counts.has(dateKey)) {
+              counts.set(dateKey, Math.max(counts.get(dateKey) || 0, qCount));
+            }
           });
         }
+
+        daily.forEach(d => {
+          d.count = counts.get(d.date) || 0;
+        });
       } catch (queryErr) {
         console.warn("Could not query poll_questions for daily stats:", queryErr);
       }
@@ -1091,6 +1120,31 @@ async function startServer() {
     } catch (err: any) {
       console.error("Error in /api/app-config:", err);
       res.status(500).json({ error: err.message || "Internal server error" });
+    }
+  });
+
+  // SEO: robots.txt and sitemap.xml
+  app.get('/robots.txt', (req, res) => {
+    const publicPath = path.join(process.cwd(), 'public', 'robots.txt');
+    const distPath = path.join(process.cwd(), 'dist', 'robots.txt');
+    if (fs.existsSync(publicPath)) {
+      res.type('text/plain').sendFile(publicPath);
+    } else if (fs.existsSync(distPath)) {
+      res.type('text/plain').sendFile(distPath);
+    } else {
+      res.type('text/plain').send("User-agent: *\nAllow: /\nSitemap: https://poll.mnr.bd/sitemap.xml\n");
+    }
+  });
+
+  app.get('/sitemap.xml', (req, res) => {
+    const publicPath = path.join(process.cwd(), 'public', 'sitemap.xml');
+    const distPath = path.join(process.cwd(), 'dist', 'sitemap.xml');
+    if (fs.existsSync(publicPath)) {
+      res.type('application/xml').sendFile(publicPath);
+    } else if (fs.existsSync(distPath)) {
+      res.type('application/xml').sendFile(distPath);
+    } else {
+      res.status(404).send('Not found');
     }
   });
   

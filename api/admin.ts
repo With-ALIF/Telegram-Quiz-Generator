@@ -181,7 +181,30 @@ export default async function handler(req: any, res: any) {
           counts.set(key, 0);
         }
 
+        const todayKey = new Date().toISOString().slice(0, 10);
+
         try {
+          // 1. Check daily_poll_stats table if present
+          try {
+            const sinceDate = daily[0]?.date || todayKey;
+            const { data: statsRows } = await supabaseAdmin
+              .from('daily_poll_stats')
+              .select('date, count')
+              .gte('date', sinceDate);
+
+            if (statsRows && statsRows.length > 0) {
+              statsRows.forEach((r: any) => {
+                const key = String(r.date).slice(0, 10);
+                if (counts.has(key)) {
+                  counts.set(key, Math.max(counts.get(key) || 0, Number(r.count) || 0));
+                }
+              });
+            }
+          } catch {
+            // Optional daily_poll_stats table may not exist yet
+          }
+
+          // 2. Count surviving rows in poll_questions
           const sinceIso = new Date(Date.now() - (days - 1) * 24 * 3600 * 1000).toISOString();
           let { data: rows, error } = await supabaseAdmin
             .from('poll_questions')
@@ -198,19 +221,24 @@ export default async function handler(req: any, res: any) {
           }
 
           if (!error && rows) {
+            const questionsByDate = new Map<string, number>();
             rows.forEach((row: any) => {
               const dt = row?.created_at || row?.updated_at;
               if (!dt) return;
               const key = new Date(dt).toISOString().slice(0, 10);
-              if (counts.has(key)) {
-                counts.set(key, (counts.get(key) || 0) + 1);
-              }
+              questionsByDate.set(key, (questionsByDate.get(key) || 0) + 1);
             });
 
-            daily.forEach(d => {
-              d.count = counts.get(d.date) || 0;
+            questionsByDate.forEach((qCount, dateKey) => {
+              if (counts.has(dateKey)) {
+                counts.set(dateKey, Math.max(counts.get(dateKey) || 0, qCount));
+              }
             });
           }
+
+          daily.forEach(d => {
+            d.count = counts.get(d.date) || 0;
+          });
         } catch (queryErr) {
           console.warn("Could not query poll_questions for daily stats, returning zero-filled range:", queryErr);
         }
